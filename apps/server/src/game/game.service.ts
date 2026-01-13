@@ -18,7 +18,8 @@ export interface GameLobby {
   config: GameConfig;
   status: 'WAITING' | 'PLAYING' | 'FINISHED';
   currentRound: number;
-  cards: GameCard[]; // Pre-fetched cards for the game
+  cards: GameCard[];
+  roundResults: Map<string, boolean>; // userId -> hasFinishedRound
 }
 
 export interface GameCard {
@@ -54,6 +55,7 @@ export class GameService {
       status: 'WAITING',
       currentRound: 0,
       cards: [],
+      roundResults: new Map(),
     };
 
     this.lobbies.set(lobbyId, newLobby);
@@ -102,20 +104,18 @@ export class GameService {
     if (!lobby)
       throw new HttpException('Lobby not found', HttpStatus.NOT_FOUND);
 
-    // If game is already playing, just return the current round (Join in progress)
     if (lobby.status === 'PLAYING') {
       return this.getCurrentRoundData(lobby);
     }
 
-    // Only host can actually START the game from WAITING state
     if (lobby.hostId !== userId) {
       return { status: 'WAITING', message: 'Waiting for host to start...' };
     }
 
-    // Fetch cards based on config
     lobby.cards = await this.fetchGameCards(lobby.config);
     lobby.status = 'PLAYING';
     lobby.currentRound = 1;
+    lobby.roundResults.clear();
 
     return this.getCurrentRoundData(lobby);
   }
@@ -144,25 +144,27 @@ export class GameService {
     const normalizedGuess = guess.trim().toLowerCase();
     const normalizedActual = currentCard.name.toLowerCase();
 
-    // Check guess
     const isCorrect =
       normalizedActual.includes(normalizedGuess) && normalizedGuess.length >= 3;
 
     if (isCorrect) {
-      // Logic for scoring would go here (update user score in lobby)
+      lobby.roundResults.set(userId, true);
+      await this.saveRoundResult(userId, currentCard, true);
+
+      const allFinished = lobby.players.every((p) => lobby.roundResults.get(p));
 
       const result = {
         correct: true,
         name: currentCard.name,
         fullImageUrl: currentCard.fullImageUrl,
         set: currentCard.set,
+        roundFinished: allFinished,
       };
 
-      // Advance round
-      lobby.currentRound++;
-
-      // Save result to DB (History)
-      await this.saveRoundResult(userId, currentCard, true);
+      if (allFinished) {
+        lobby.currentRound++;
+        lobby.roundResults.clear();
+      }
 
       return result;
     } else {
@@ -177,19 +179,22 @@ export class GameService {
     }
 
     const currentCard = lobby.cards[lobby.currentRound - 1];
+    lobby.roundResults.set(userId, true);
+    await this.saveRoundResult(userId, currentCard, false);
 
-    // Result for giving up
+    const allFinished = lobby.players.every((p) => lobby.roundResults.get(p));
+
     const result = {
       name: currentCard.name,
       fullImageUrl: currentCard.fullImageUrl,
       set: currentCard.set,
+      roundFinished: allFinished,
     };
 
-    // Advance round
-    lobby.currentRound++;
-
-    // Save result to DB (History) as incorrect
-    await this.saveRoundResult(userId, currentCard, false);
+    if (allFinished) {
+      lobby.currentRound++;
+      lobby.roundResults.clear();
+    }
 
     return result;
   }
@@ -199,8 +204,6 @@ export class GameService {
   private async fetchGameCards(config: GameConfig): Promise<GameCard[]> {
     const cards: GameCard[] = [];
     let attempts = 0;
-
-    // Safety break
     const maxAttempts = config.rounds * 5;
 
     while (cards.length < config.rounds && attempts < maxAttempts) {
@@ -208,8 +211,6 @@ export class GameService {
       try {
         const cardData = await this.fetchRandomCardRaw(config.sets);
         if (!cardData) continue;
-
-        // Ensure unique cards in the game
         if (cards.some((c) => c.id === cardData.id)) continue;
 
         const imageBuffer = await this.downloadImage(
@@ -233,12 +234,9 @@ export class GameService {
 
   private async fetchRandomCardRaw(allowedSets: string[] = ['all']) {
     let setId: string;
-
     if (allowedSets.length > 0 && !allowedSets.includes('all')) {
-      // Pick a random set from the allowed list
       setId = allowedSets[Math.floor(Math.random() * allowedSets.length)];
     } else {
-      // Pick any random set from API
       const sets = await this.tcgdex.fetch('sets');
       if (!sets || sets.length === 0) return null;
       const randomSetSummary = sets[Math.floor(Math.random() * sets.length)];
@@ -256,29 +254,24 @@ export class GameService {
 
     const card = await this.tcgdex.fetch('cards', randomCardResume.id);
     if (!card || !card.image) return null;
-
     return card;
   }
 
   async getAvailableSets() {
     const sets = await this.tcgdex.fetch('sets');
     if (!sets) return [];
-    // Return relevant simplified info
     return sets.map((s) => ({
       id: s.id,
       name: s.name,
-      logo: s.logo, // .png or .jpg usually available
+      logo: s.logo,
       symbol: s.symbol,
       cardCount: s.cardCount,
     }));
   }
 
-  // --- Legacy / Database Logic ---
-
   async saveRoundResult(userId: string, card: GameCard, correct: boolean) {
-    if (userId.startsWith('guest')) return; // Don't save stats for guests
+    if (userId.startsWith('guest')) return;
 
-    // Keeping legacy prisma write for user stats
     await this.prisma.game.create({
       data: {
         userId,
@@ -305,19 +298,14 @@ export class GameService {
   private async cropImage(buffer: Buffer): Promise<string> {
     const image = sharp(buffer);
     const metadata = await image.metadata();
-
     if (!metadata.width || !metadata.height) {
       throw new Error('Could not get image metadata');
     }
-
-    // Crop bottom 30%
     const cropHeight = Math.floor(metadata.height * 0.3);
     const top = metadata.height - cropHeight;
-
     const croppedBuffer = await image
       .extract({ left: 0, top: top, width: metadata.width, height: cropHeight })
       .toBuffer();
-
     return croppedBuffer.toString('base64');
   }
 }

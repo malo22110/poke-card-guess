@@ -146,34 +146,55 @@ class _GameScreenState extends State<GameScreen> {
   Future<void> startNewGame() => _fetchInitialRound();
 
   void _initSocket() {
-    _socketService.connect();
+     _socketService.connect();
 
     _roundSub = _socketService.roundUpdateStream.listen((data) {
        _handleRoundUpdate(data);
     });
     
     _guessResultSub = _socketService.guessResultStream.listen((data) {
-       if (!data['correct']) {
+       if (data['correct'] == true) {
+         _showResult(data);
+       } else {
          ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Incorrect! Try again.')),
          );
        }
     });
 
+    _socketService.socket.on('giveUpResult', (data) {
+        if (mounted) {
+           _showResult(data ?? {});
+        }
+    });
+
     _socketService.socket.on('roundFinished', (data) {
        if (mounted) {
-         setState(() {
-           showFullCard = true;
-           _isCorrect = (data['winner'] == (_guestId ?? 'host')) || (data['winner'] == 'user-from-token'); // Simplified
-           // Actually winner is the userId.
-           // If winner matches MY id, I guessed it.
-           // But actually everyone sees the result.
-           final result = data['result'];
-           _fullImageUrl = result['fullImageUrl'];
-           _revealedName = result['name'];
-           _revealedSet = result['set'];
-         });
+         // This overrides whatever we have, ensuring everyone sees the result
+         // data.result contains everything
+         _showResult(data['result'] ?? {});
        }
+    });
+  }
+
+  void _showResult(Map<String, dynamic> result) {
+    setState(() {
+       showFullCard = true;
+       // If I guessed, it's correct. If I gave up or round finished, treat as correct/reveal.
+       // Distinguish 'correct' vs 'giveUp'?
+       // makeGuess returns {correct: true}. giveUp returns just card info (undefined correct).
+       // We can map logic: _isCorrect = result['correct'] == true;
+       _isCorrect = result['correct'] == true;
+       
+       _fullImageUrl = result['fullImageUrl'];
+       _revealedName = result['name'];
+       _revealedSet = result['set'];
+       
+       if (_isCorrect == true) {
+          score++; // Simple local score update, ideally sync with server
+          score = score; // Just to be explicit
+       }
+       // attempts?
     });
   }
 

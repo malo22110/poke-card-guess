@@ -84,24 +84,16 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
       client.emit('guessResult', result);
 
-      if (result.correct) {
-        // If correct, broadcast to everyone that round changed (optional, or just for the winner?)
-        // Usually, if one person guesses right, everyone moves to next card?
-        // OR is it individual score?
-        // Based on current logic: "Advance round" is on the lobby. So everyone moves.
+      if ((result as any).correct && (result as any).roundFinished) {
+        // Only if EVERYONE is done do we end the round globally
+        this.server.to(data.lobbyId).emit('roundFinished', {
+          winner: null, // Logic changed: strict winner is less relevant in sync mode, or maybe last one?
+          result: result,
+        });
 
         const nextRoundData = this.gameService.getCurrentRoundData(
           this.gameService.getLobby(data.lobbyId),
         );
-        // Delay slightly to let them see the "Correct" message/animation?
-        // Or send "RoundFinished" event
-
-        this.server.to(data.lobbyId).emit('roundFinished', {
-          winner: data.userId,
-          result: result, // contains revealed card info
-        });
-
-        // Send next round data after a delay
         setTimeout(() => {
           this.server.to(data.lobbyId).emit('nextRound', nextRoundData);
         }, 3000);
@@ -119,18 +111,23 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const result = await this.gameService.giveUp(data.lobbyId, data.userId);
 
-      this.server.to(data.lobbyId).emit('roundFinished', {
-        winner: null, // No winner on give up
-        result: result,
-      });
+      // Emit individual result so the user sees the card
+      client.emit('giveUpResult', result);
 
-      const nextRoundData = this.gameService.getCurrentRoundData(
-        this.gameService.getLobby(data.lobbyId),
-      );
+      if ((result as any).roundFinished) {
+        this.server.to(data.lobbyId).emit('roundFinished', {
+          winner: null,
+          result: result,
+        });
 
-      setTimeout(() => {
-        this.server.to(data.lobbyId).emit('nextRound', nextRoundData);
-      }, 3000);
+        const nextRoundData = this.gameService.getCurrentRoundData(
+          this.gameService.getLobby(data.lobbyId),
+        );
+
+        setTimeout(() => {
+          this.server.to(data.lobbyId).emit('nextRound', nextRoundData);
+        }, 3000);
+      }
     } catch (e) {
       client.emit('error', { message: e.message });
     }
