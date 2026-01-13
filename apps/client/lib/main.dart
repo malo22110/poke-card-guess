@@ -1,58 +1,10 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const PokeCardGuessApp());
-}
-
-class PokemonCard {
-  final String id;
-  final String name;
-  final CardImages images;
-  final CardSet? set;
-  final List<String>? types;
-  final String? supertype;
-
-  PokemonCard({
-    required this.id,
-    required this.name,
-    required this.images,
-    this.set,
-    this.types,
-    this.supertype,
-  });
-
-  factory PokemonCard.fromJson(Map<String, dynamic> json) {
-    return PokemonCard(
-      id: json['id'],
-      name: json['name'],
-      images: CardImages.fromJson(json['images']),
-      set: json['set'] != null ? CardSet.fromJson(json['set']) : null,
-      types: json['types'] != null ? List<String>.from(json['types']) : null,
-      supertype: json['supertype'],
-    );
-  }
-}
-
-class CardImages {
-  final String large;
-
-  CardImages({required this.large});
-
-  factory CardImages.fromJson(Map<String, dynamic> json) {
-    return CardImages(large: json['large']);
-  }
-}
-
-class CardSet {
-  final String name;
-
-  CardSet({required this.name});
-
-  factory CardSet.fromJson(Map<String, dynamic> json) {
-    return CardSet(name: json['name']);
-  }
 }
 
 class PokeCardGuessApp extends StatelessWidget {
@@ -84,7 +36,12 @@ class CardGuessGame extends StatefulWidget {
 }
 
 class _CardGuessGameState extends State<CardGuessGame> {
-  PokemonCard? currentCard;
+  String? gameId;
+  Uint8List? croppedImageBytes;
+  String? fullImageUrl;
+  String? revealedName;
+  String? revealedSet;
+  
   bool isLoading = true;
   bool showFullCard = false;
   String? error;
@@ -103,78 +60,122 @@ class _CardGuessGameState extends State<CardGuessGame> {
   void initState() {
     super.initState();
     _guessController = TextEditingController();
-    loadRandomCard();
+    startNewGame();
   }
 
-  Future<void> loadRandomCard() async {
+  Future<void> startNewGame() async {
     setState(() {
       isLoading = true;
       showFullCard = false;
       error = null;
       isCorrect = null;
       _guessController.clear();
+      gameId = null;
+      croppedImageBytes = null;
+      fullImageUrl = null;
+      revealedName = null;
+      revealedSet = null;
     });
 
     try {
-      // Call our backend instead of the external API directly
-      final response = await http.get(Uri.parse('http://localhost:3000/game/card'));
+      final response = await http.get(Uri.parse('http://localhost:3000/game/start'));
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 201 || response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        final base64Image = data['croppedImage'].split(',').last; // Remove data:image/png;base64, prefix if present
+        
         setState(() {
-          currentCard = PokemonCard.fromJson(data);
+          gameId = data['gameId'];
+          croppedImageBytes = base64Decode(base64Image);
           isLoading = false;
         });
       } else {
-        throw Exception('Failed to load card: ${response.statusCode}');
+        throw Exception('Failed to start game: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
-        error = 'Failed to load card: $e';
+        error = 'Failed to start game: $e';
         isLoading = false;
       });
     }
   }
 
-  void checkGuess() {
-    if (currentCard == null || _guessController.text.isEmpty) return;
+  Future<void> checkGuess() async {
+    if (gameId == null || _guessController.text.isEmpty) return;
 
-    final guess = _guessController.text.trim().toLowerCase();
-    final actualName = currentCard!.name.toLowerCase();
+    final guess = _guessController.text.trim();
 
-    // Check if the guess is contained in the card name (e.g. "Pikachu" in "Surfing Pikachu")
-    // We ignore case and require at least 3 characters to avoid false positives with short strings
-    if (actualName.contains(guess) && guess.length >= 3) {
-      setState(() {
-        isCorrect = true;
-        showFullCard = true;
-        score++;
-        attempts++;
-      });
-    } else {
-      setState(() {
-        isCorrect = false;
-      });
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:3000/game/guess'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'gameId': gameId,
+          'guess': guess,
+        }),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        
+        if (result['correct'] == true) {
+          setState(() {
+            isCorrect = true;
+            showFullCard = true;
+            fullImageUrl = result['fullImageUrl'];
+            revealedName = result['name'];
+            revealedSet = result['set'];
+            score++;
+            attempts++;
+          });
+        } else {
+          setState(() {
+            isCorrect = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Not quite! Try again.'),
+              backgroundColor: Colors.red.withOpacity(0.8),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Not quite! Try again.'),
-          backgroundColor: Colors.red.withOpacity(0.8),
-          behavior: SnackBarBehavior.floating,
-        ),
+        SnackBar(content: Text('Error checking guess: $e')),
       );
     }
   }
 
-  void giveUp() {
-    setState(() {
-      showFullCard = true;
-      isCorrect = false;
-      attempts++;
-    });
+  Future<void> giveUp() async {
+    if (gameId == null) return;
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:3000/game/give-up'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'gameId': gameId}),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        setState(() {
+          showFullCard = true;
+          isCorrect = false;
+          fullImageUrl = result['fullImageUrl'];
+          revealedName = result['name'];
+          revealedSet = result['set'];
+          attempts++;
+        });
+      }
+    } catch (e) {
+      print('Error giving up: $e');
+    }
   }
 
   void nextCard() {
-    loadRandomCard();
+    startNewGame();
   }
 
   @override
@@ -323,7 +324,7 @@ class _CardGuessGameState extends State<CardGuessGame> {
         ),
         const SizedBox(height: 24),
         ElevatedButton.icon(
-          onPressed: loadRandomCard,
+          onPressed: startNewGame,
           icon: const Icon(Icons.refresh),
           label: const Text('Try Again'),
           style: ElevatedButton.styleFrom(
@@ -340,7 +341,7 @@ class _CardGuessGameState extends State<CardGuessGame> {
   }
 
   Widget _buildGameContent() {
-    if (currentCard == null) {
+    if (croppedImageBytes == null) {
       return const SizedBox.shrink();
     }
 
@@ -429,7 +430,7 @@ class _CardGuessGameState extends State<CardGuessGame> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Text(
-        isCorrect! ? 'Correct! It\'s ${currentCard!.name}!' : 'Nice try! It was ${currentCard!.name}.',
+        isCorrect! ? 'Correct! It\'s $revealedName!' : 'Nice try! It was $revealedName.',
         style: TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.bold,
@@ -448,10 +449,8 @@ class _CardGuessGameState extends State<CardGuessGame> {
   }
 
   Widget _buildCardDisplay() {
-    final imageUrl = currentCard!.images.large;
-    
     return Hero(
-      tag: 'card_${currentCard!.id}',
+      tag: 'card_display',
       child: Container(
         constraints: const BoxConstraints(maxWidth: 400),
         child: ClipRRect(
@@ -469,11 +468,10 @@ class _CardGuessGameState extends State<CardGuessGame> {
             ),
             child: Stack(
               children: [
-                // Card image with crop effect
                 if (!showFullCard)
-                  _buildCroppedCard(imageUrl)
+                  _buildCroppedCard()
                 else
-                  _buildFullCard(imageUrl),
+                  _buildFullCard(),
               ],
             ),
           ),
@@ -482,7 +480,7 @@ class _CardGuessGameState extends State<CardGuessGame> {
     );
   }
 
-  Widget _buildCroppedCard(String imageUrl) {
+  Widget _buildCroppedCard() {
     return Container(
       height: 500,
       decoration: BoxDecoration(
@@ -491,29 +489,23 @@ class _CardGuessGameState extends State<CardGuessGame> {
       ),
       child: Stack(
         children: [
-          // Only show bottom 30% of the card
+          // Show the cropped image at the bottom
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            child: ClipRect(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                heightFactor: 0.3, // Show only bottom 30%
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 500,
-                      color: Colors.grey[300],
-                      child: const Center(
-                        child: Icon(Icons.error, size: 50),
-                      ),
-                    );
-                  },
-                ),
-              ),
+            child: Image.memory(
+              croppedImageBytes!,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: 150,
+                  color: Colors.grey[300],
+                  child: const Center(
+                    child: Icon(Icons.error, size: 50),
+                  ),
+                );
+              },
             ),
           ),
           // Gradient overlay at the top to create mystery effect
@@ -521,7 +513,7 @@ class _CardGuessGameState extends State<CardGuessGame> {
             top: 0,
             left: 0,
             right: 0,
-            height: 350,
+            bottom: 150, // Leave space for the cropped image
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -562,9 +554,11 @@ class _CardGuessGameState extends State<CardGuessGame> {
     );
   }
 
-  Widget _buildFullCard(String imageUrl) {
+  Widget _buildFullCard() {
+    if (fullImageUrl == null) return const SizedBox.shrink();
+    
     return Image.network(
-      imageUrl,
+      fullImageUrl!,
       fit: BoxFit.contain,
       errorBuilder: (context, error, stackTrace) {
         return Container(
@@ -578,9 +572,9 @@ class _CardGuessGameState extends State<CardGuessGame> {
     );
   }
 
-
-
   Widget _buildCardInfo() {
+    if (revealedName == null) return const SizedBox.shrink();
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -591,26 +585,17 @@ class _CardGuessGameState extends State<CardGuessGame> {
       child: Column(
         children: [
           Text(
-            currentCard!.name,
+            revealedName!,
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 8),
-          if (currentCard!.supertype != null)
-            Text(
-              '${currentCard!.supertype} - ${currentCard!.types?.join(", ") ?? "Unknown"}',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white.withOpacity(0.8),
-              ),
-            ),
-          if (currentCard!.set != null) ...[
+          if (revealedSet != null) ...[
             const SizedBox(height: 12),
             Text(
-              'Set: ${currentCard!.set!.name}',
+              'Set: $revealedSet',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.white.withOpacity(0.7),
