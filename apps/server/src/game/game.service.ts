@@ -20,6 +20,8 @@ export interface GameLobby {
   currentRound: number;
   cards: GameCard[];
   roundResults: Map<string, boolean>; // userId -> hasFinishedRound
+  scores: Map<string, number>; // userId -> total score
+  timer?: any; // NodeJS.Timeout
 }
 
 export interface GameCard {
@@ -56,6 +58,7 @@ export class GameService {
       currentRound: 0,
       cards: [],
       roundResults: new Map(),
+      scores: new Map([[hostId, 0]]), // Initialize host score
     };
 
     this.lobbies.set(lobbyId, newLobby);
@@ -72,6 +75,7 @@ export class GameService {
     }
     if (!lobby.players.includes(userId)) {
       lobby.players.push(userId);
+      lobby.scores.set(userId, 0); // Initialize score
     }
     return lobby;
   }
@@ -94,6 +98,7 @@ export class GameService {
       players: lobby.players.length,
       hostId: lobby.hostId,
       config: lobby.config,
+      scores: Object.fromEntries(lobby.scores), // Convert Map to object
     };
   }
 
@@ -123,7 +128,10 @@ export class GameService {
   getCurrentRoundData(lobby: GameLobby) {
     if (lobby.currentRound > lobby.cards.length) {
       lobby.status = 'FINISHED';
-      return { status: 'FINISHED' };
+      return {
+        status: 'FINISHED',
+        scores: Object.fromEntries(lobby.scores),
+      };
     }
     const card = lobby.cards[lobby.currentRound - 1];
     return {
@@ -131,6 +139,8 @@ export class GameService {
       round: lobby.currentRound,
       totalRounds: lobby.config.rounds,
       croppedImage: `data:image/png;base64,${card.croppedImage}`,
+      scores: Object.fromEntries(lobby.scores),
+      status: lobby.status,
     };
   }
 
@@ -149,6 +159,11 @@ export class GameService {
 
     if (isCorrect) {
       lobby.roundResults.set(userId, true);
+
+      // Increment score
+      const currentScore = lobby.scores.get(userId) || 0;
+      lobby.scores.set(userId, currentScore + 1);
+
       await this.saveRoundResult(userId, currentCard, true);
 
       const allFinished = lobby.players.every((p) => lobby.roundResults.get(p));
@@ -197,6 +212,48 @@ export class GameService {
     }
 
     return result;
+  }
+
+  async forceEndRound(lobbyId: string) {
+    const lobby = this.lobbies.get(lobbyId);
+    if (!lobby || lobby.status !== 'PLAYING') return null;
+
+    const currentCard = lobby.cards[lobby.currentRound - 1];
+
+    // Mark all remaining players as finished (incorrect)
+    for (const userId of lobby.players) {
+      if (!lobby.roundResults.has(userId)) {
+        lobby.roundResults.set(userId, true);
+        await this.saveRoundResult(userId, currentCard, false);
+      }
+    }
+
+    // Advance round
+    lobby.currentRound++;
+    lobby.roundResults.clear();
+
+    return {
+      name: currentCard.name,
+      fullImageUrl: currentCard.fullImageUrl,
+      set: currentCard.set,
+      roundFinished: true,
+    };
+  }
+
+  setRoundTimer(lobbyId: string, callback: () => void, ms: number) {
+    const lobby = this.lobbies.get(lobbyId);
+    if (lobby) {
+      if (lobby.timer) clearTimeout(lobby.timer);
+      lobby.timer = setTimeout(callback, ms);
+    }
+  }
+
+  clearRoundTimer(lobbyId: string) {
+    const lobby = this.lobbies.get(lobbyId);
+    if (lobby && lobby.timer) {
+      clearTimeout(lobby.timer);
+      lobby.timer = undefined;
+    }
   }
 
   // --- Helpers ---

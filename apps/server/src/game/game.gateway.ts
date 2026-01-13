@@ -51,6 +51,41 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
+  // --- Timer Helpers ---
+
+  private async handleRoundTimeout(lobbyId: string) {
+    const result = await this.gameService.forceEndRound(lobbyId);
+    if (!result) return;
+
+    this.server.to(lobbyId).emit('roundFinished', {
+      winner: null,
+      result: result,
+      reason: 'timeout',
+    });
+
+    this.scheduleNextRound(lobbyId);
+  }
+
+  private scheduleNextRound(lobbyId: string) {
+    setTimeout(() => {
+      const nextRoundData = this.gameService.getCurrentRoundData(
+        this.gameService.getLobby(lobbyId),
+      );
+
+      if (nextRoundData.status === 'FINISHED') {
+        this.server.to(lobbyId).emit('nextRound', nextRoundData); // Send as nextRound so frontend handles it
+        return;
+      }
+
+      this.server.to(lobbyId).emit('nextRound', nextRoundData);
+      this.gameService.setRoundTimer(
+        lobbyId,
+        () => this.handleRoundTimeout(lobbyId),
+        30000,
+      );
+    }, 3000);
+  }
+
   @SubscribeMessage('startGame')
   async startGame(
     @ConnectedSocket() client: Socket,
@@ -64,8 +99,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Broadcast to EVERYONE in the lobby that the game has started
       this.server.to(data.lobbyId).emit('gameStarted', result);
 
-      // Also emit updated status just in case
-      this.server.to(data.lobbyId).emit('gameStatus', { status: 'PLAYING' });
+      // Start timer for the first round
+      this.gameService.setRoundTimer(
+        data.lobbyId,
+        () => this.handleRoundTimeout(data.lobbyId),
+        30000,
+      );
     } catch (e) {
       client.emit('error', { message: e.message });
     }
@@ -85,18 +124,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('guessResult', result);
 
       if ((result as any).correct && (result as any).roundFinished) {
-        // Only if EVERYONE is done do we end the round globally
+        this.gameService.clearRoundTimer(data.lobbyId);
+
         this.server.to(data.lobbyId).emit('roundFinished', {
-          winner: null, // Logic changed: strict winner is less relevant in sync mode, or maybe last one?
+          winner: null,
           result: result,
         });
 
-        const nextRoundData = this.gameService.getCurrentRoundData(
-          this.gameService.getLobby(data.lobbyId),
-        );
-        setTimeout(() => {
-          this.server.to(data.lobbyId).emit('nextRound', nextRoundData);
-        }, 3000);
+        this.scheduleNextRound(data.lobbyId);
       }
     } catch (e) {
       client.emit('error', { message: e.message });
@@ -115,18 +150,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('giveUpResult', result);
 
       if ((result as any).roundFinished) {
+        this.gameService.clearRoundTimer(data.lobbyId);
+
         this.server.to(data.lobbyId).emit('roundFinished', {
           winner: null,
           result: result,
         });
 
-        const nextRoundData = this.gameService.getCurrentRoundData(
-          this.gameService.getLobby(data.lobbyId),
-        );
-
-        setTimeout(() => {
-          this.server.to(data.lobbyId).emit('nextRound', nextRoundData);
-        }, 3000);
+        this.scheduleNextRound(data.lobbyId);
       }
     } catch (e) {
       client.emit('error', { message: e.message });

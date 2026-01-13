@@ -5,6 +5,7 @@ class ResultDisplay extends StatelessWidget {
   final String? revealedName;
   final String? revealedSet;
   final VoidCallback onNextCard;
+  final bool showNextButton;
 
   const ResultDisplay({
     super.key,
@@ -12,6 +13,7 @@ class ResultDisplay extends StatelessWidget {
     required this.revealedName,
     required this.revealedSet,
     required this.onNextCard,
+    this.showNextButton = true,
   });
 
   @override
@@ -70,20 +72,21 @@ class ResultDisplay extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 16),
-        ElevatedButton.icon(
-          onPressed: onNextCard,
-          icon: const Icon(Icons.skip_next),
-          label: const Text('Next Card'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFFD700),
-            foregroundColor: const Color(0xFF1a237e),
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+        if (showNextButton)
+          ElevatedButton.icon(
+            onPressed: onNextCard,
+            icon: const Icon(Icons.skip_next),
+            label: const Text('Next Card'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFD700),
+              foregroundColor: const Color(0xFF1a237e),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 8,
             ),
-            elevation: 8,
           ),
-        ),
       ],
     );
   }

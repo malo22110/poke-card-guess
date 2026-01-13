@@ -65,6 +65,7 @@ class CardDisplay extends StatelessWidget {
             child: Image.memory(
               base64Decode(croppedImage!),
               fit: BoxFit.contain,
+              gaplessPlayback: true,
               errorBuilder: (context, error, stackTrace) {
                 return Container(
                   height: 150,
@@ -128,6 +129,22 @@ class CardDisplay extends StatelessWidget {
     return Image.network(
       fullImageUrl!,
       fit: BoxFit.contain,
+      gaplessPlayback: true,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          height: 500,
+          color: Colors.grey[200],
+          child: Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+            ),
+          ),
+        );
+      },
       errorBuilder: (context, error, stackTrace) {
         return Container(
           height: 500,

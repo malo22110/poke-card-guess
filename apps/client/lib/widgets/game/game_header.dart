@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class GameHeader extends StatelessWidget {
   final int score;
   final int attempts;
+  final int? remainingSeconds;
 
   const GameHeader({
     super.key,
     required this.score,
     required this.attempts,
+    this.remainingSeconds,
   });
 
   @override
@@ -45,6 +47,30 @@ class GameHeader extends StatelessWidget {
               ),
             ],
           ),
+          if (remainingSeconds != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: _getTimerColor().withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _getTimerColor(), width: 2),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.timer, color: _getTimerColor(), size: 24),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${remainingSeconds}s',
+                    style: TextStyle(
+                      color: _getTimerColor(),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
@@ -70,5 +96,12 @@ class GameHeader extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Color _getTimerColor() {
+    if (remainingSeconds == null) return Colors.white;
+    if (remainingSeconds! > 20) return Colors.green;
+    if (remainingSeconds! > 10) return Colors.orange;
+    return Colors.red;
   }
 }

@@ -7,6 +7,7 @@ import '../widgets/game/game_header.dart';
 import '../widgets/game/card_display.dart';
 import '../widgets/game/guess_input.dart';
 import '../widgets/game/result_display.dart';
+import '../widgets/game/scoreboard.dart';
 import '../services/game_socket_service.dart';
 import 'dart:async';
 
@@ -42,6 +43,18 @@ class _GameScreenState extends State<GameScreen> {
   final _socketService = GameSocketService();
   StreamSubscription? _roundSub;
   StreamSubscription? _guessResultSub; // For our own guess feedback (e.g. invalid) or general handling?
+  
+  // Timer variables
+  Timer? _countdownTimer;
+  int _remainingSeconds = 30;
+  static const int _roundDuration = 30;
+  
+  // Scoreboard and waiting state
+  Map<String, int> _scores = {};
+  bool _isWaitingForRoundEnd = false;
+  int _currentRound = 0;
+  int _totalRounds = 0;
+  
   // Actually the Gateway emits 'guessResult' only to the guesser. 
   // It emits 'roundFinished' to EVERYONE if correct.
   // We need to differentiate "My Guess Result" (which might be "Wrong, try again") vs "Round Finished" (someone won/gave up).
@@ -75,8 +88,10 @@ class _GameScreenState extends State<GameScreen> {
     _guessController.dispose();
     _roundSub?.cancel();
     _guessResultSub?.cancel();
+    _countdownTimer?.cancel();
     // Remove specific listeners attached manually to avoid duplicates if we come back
     _socketService.socket.off('roundFinished');
+    _socketService.socket.off('giveUpResult');
     super.dispose();
   }
 
@@ -153,6 +168,7 @@ class _GameScreenState extends State<GameScreen> {
     });
     
     _guessResultSub = _socketService.guessResultStream.listen((data) {
+       if (!mounted) return;
        if (data['correct'] == true) {
          _showResult(data);
        } else {
@@ -178,6 +194,9 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _showResult(Map<String, dynamic> result) {
+    _stopRoundTimer(); // Stop the timer when result is shown
+    if (!mounted) return;
+    
     setState(() {
        showFullCard = true;
        // If I guessed, it's correct. If I gave up or round finished, treat as correct/reveal.
@@ -198,7 +217,37 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
+  void _startRoundTimer() {
+    _countdownTimer?.cancel();
+    if (!mounted) return;
+    
+    setState(() {
+      _remainingSeconds = _roundDuration;
+    });
+    
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      
+      if (_remainingSeconds > 0) {
+        setState(() {
+          _remainingSeconds--;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  void _stopRoundTimer() {
+    _countdownTimer?.cancel();
+  }
+
   void _handleRoundUpdate(dynamic data) {
+    if (!mounted) return;
+    
     if (data['status'] == 'FINISHED') {
        setState(() {
          error = 'Game Finished!';
@@ -218,7 +267,20 @@ class _GameScreenState extends State<GameScreen> {
       _isCorrect = null;
       _guessController.clear();
       error = null;
+      _isWaitingForRoundEnd = false; // Reset waiting state for new round
+      
+      // Extract scores if available
+      if (data['scores'] != null) {
+        _scores = Map<String, int>.from(data['scores']);
+      }
+      
+      // Extract round info
+      _currentRound = data['round'] ?? 0;
+      _totalRounds = data['totalRounds'] ?? 0;
     });
+    
+    // Start the countdown timer for the new round
+    _startRoundTimer();
   }
 
   void checkGuess() {
@@ -228,6 +290,9 @@ class _GameScreenState extends State<GameScreen> {
 
   void giveUp() {
     if (_lobbyId == null) return;
+    setState(() {
+      _isWaitingForRoundEnd = true;
+    });
     _socketService.socket.emit('giveUp', {'lobbyId': _lobbyId, 'userId': _guestId ?? 'guest'});
   }
 
@@ -255,7 +320,11 @@ class _GameScreenState extends State<GameScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              GameHeader(score: score, attempts: attempts),
+              GameHeader(
+                score: score,
+                attempts: attempts,
+                remainingSeconds: _remainingSeconds,
+              ),
               Expanded(
                 child: Center(
                   child: _isLoading
@@ -303,37 +372,81 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildErrorState() {
+    // Check if this is a "Game Finished" state
+    final isGameFinished = error == 'Game Finished!';
+    
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
-          Icons.error_outline,
-          size: 80,
-          color: Colors.red.withOpacity(0.7),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          error ?? 'An error occurred',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
+        if (isGameFinished) ...[
+          // Final Scoreboard
+          Icon(
+            Icons.emoji_events,
+            size: 80,
+            color: Colors.amber,
           ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 24),
-        ElevatedButton.icon(
-          onPressed: startNewGame,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Try Again'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFF3B4CCA),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+          const SizedBox(height: 16),
+          Text(
+            'Game Over!',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        ),
+          const SizedBox(height: 24),
+          if (_scores.isNotEmpty)
+            Scoreboard(
+              scores: _scores,
+              currentUserId: _guestId,
+            ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+            },
+            icon: const Icon(Icons.home),
+            label: const Text('Exit to Main Menu'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF3B4CCA),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ] else ...[
+          // Regular error state
+          Icon(
+            Icons.error_outline,
+            size: 80,
+            color: Colors.red.withOpacity(0.7),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            error ?? 'An error occurred',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: startNewGame,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Try Again'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF3B4CCA),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -349,13 +462,52 @@ class _GameScreenState extends State<GameScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Scoreboard
+            if (_scores.isNotEmpty)
+              Scoreboard(
+                scores: _scores,
+                currentUserId: _guestId,
+              ),
+            const SizedBox(height: 16),
             CardDisplay(
               showFullCard: showFullCard,
               croppedImage: _croppedImage,
               fullImageUrl: _fullImageUrl,
             ),
             const SizedBox(height: 24),
-            if (!showFullCard)
+            // Show waiting message if user gave up
+            if (_isWaitingForRoundEnd && !showFullCard)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Waiting for round to end...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (!showFullCard)
               GuessInput(
                 controller: _guessController,
                 onGuessSubmitted: checkGuess,
@@ -367,6 +519,7 @@ class _GameScreenState extends State<GameScreen> {
                 revealedName: _revealedName,
                 revealedSet: _revealedSet,
                 onNextCard: nextCard,
+                showNextButton: _currentRound < _totalRounds,
               ),
           ],
         ),
