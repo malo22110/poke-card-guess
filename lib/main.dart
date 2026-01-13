@@ -1,121 +1,614 @@
 import 'package:flutter/material.dart';
+import 'package:pokemon_tcg/pokemon_tcg.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const PokeCardGuessApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class PokeCardGuessApp extends StatelessWidget {
+  const PokeCardGuessApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Pokemon Card Guess',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF3B4CCA),
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+        fontFamily: 'Roboto',
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const CardGuessGame(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class CardGuessGame extends StatefulWidget {
+  const CardGuessGame({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<CardGuessGame> createState() => _CardGuessGameState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _CardGuessGameState extends State<CardGuessGame> {
+  late PokemonTcgApi api;
+  PokemonCard? currentCard;
+  bool isLoading = true;
+  bool showFullCard = false;
+  String? error;
+  int score = 0;
+  int attempts = 0;
+  late TextEditingController _guessController;
+  bool? isCorrect;
 
-  void _incrementCounter() {
+  @override
+  void dispose() {
+    _guessController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _guessController = TextEditingController();
+    // Initialize API with API key from https://pokemontcg.io/
+    api = PokemonTcgApi(apiKey: '0236ceb1-a442-4657-b0ae-f8eeac60e5cc');
+    loadRandomCard();
+  }
+
+  Future<void> loadRandomCard() async {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      isLoading = true;
+      showFullCard = false;
+      error = null;
+      isCorrect = null;
+      _guessController.clear();
     });
+
+    try {
+      // 1. Fetch all sets first
+      final sets = await api.getSets();
+      
+      if (sets.isEmpty) {
+        throw Exception('No sets found');
+      }
+
+      // 2. Pick a random set
+      final randomSet = (sets..shuffle()).first;
+
+      // 3. Fetch cards for that specific set
+      // This is much more efficient than fetching all cards
+      final cards = await api.getCardsForSet(randomSet.id);
+      
+      if (cards.isNotEmpty) {
+        // 4. Pick a random card from the set
+        // Filter out cards that don't have an image
+        final validCards = cards.where((c) => c.images.large.isNotEmpty).toList();
+        
+        if (validCards.isNotEmpty) {
+          final randomCard = (validCards..shuffle()).first;
+          setState(() {
+            currentCard = randomCard;
+            isLoading = false;
+          });
+        } else {
+          // If no valid cards in this set, try again
+          loadRandomCard();
+        }
+      } else {
+        // If set is empty, try again
+        loadRandomCard();
+      }
+    } catch (e) {
+      setState(() {
+        error = 'Failed to load card: $e';
+        isLoading = false;
+      });
+    }
+  }
+
+  void checkGuess() {
+    if (currentCard == null || _guessController.text.isEmpty) return;
+
+    final guess = _guessController.text.trim().toLowerCase();
+    final actualName = currentCard!.name.toLowerCase();
+
+    // Check if the guess is contained in the card name (e.g. "Pikachu" in "Surfing Pikachu")
+    // We ignore case and require at least 3 characters to avoid false positives with short strings
+    if (actualName.contains(guess) && guess.length >= 3) {
+      setState(() {
+        isCorrect = true;
+        showFullCard = true;
+        score++;
+        attempts++;
+      });
+    } else {
+      setState(() {
+        isCorrect = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Not quite! Try again.'),
+          backgroundColor: Colors.red.withOpacity(0.8),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void giveUp() {
+    setState(() {
+      showFullCard = true;
+      isCorrect = false;
+      attempts++;
+    });
+  }
+
+  void nextCard() {
+    loadRandomCard();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF1a237e),
+              const Color(0xFF3B4CCA),
+              const Color(0xFF5E35B1),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: Center(
+                  child: isLoading
+                      ? _buildLoadingState()
+                      : error != null
+                          ? _buildErrorState()
+                          : _buildGameContent(),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'PokeCard Guess',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withOpacity(0.3),
+                      offset: const Offset(2, 2),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Guess the Pokemon!',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white.withOpacity(0.8),
+                ),
+              ),
+            ],
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.3)),
             ),
+            child: Row(
+              children: [
+                const Icon(Icons.stars, color: Colors.amber, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Score: $score/$attempts',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              strokeWidth: 3,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          'Loading Pokemon card...',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 16,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.error_outline,
+          size: 80,
+          color: Colors.red.withOpacity(0.7),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          error ?? 'An error occurred',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        ElevatedButton.icon(
+          onPressed: loadRandomCard,
+          icon: const Icon(Icons.refresh),
+          label: const Text('Try Again'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: const Color(0xFF3B4CCA),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGameContent() {
+    if (currentCard == null) {
+      return const SizedBox.shrink();
+    }
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildCardDisplay(),
+            const SizedBox(height: 24),
+            if (!showFullCard) ...[
+              _buildGuessInput(),
+              const SizedBox(height: 16),
+              _buildActionButtons(),
+            ] else ...[
+              _buildResultMessage(),
+              _buildCardInfo(),
+              const SizedBox(height: 16),
+              _buildNextButton(),
+            ],
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+    );
+  }
+
+  Widget _buildGuessInput() {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 400),
+      child: TextField(
+        controller: _guessController,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: 'Who\'s that Pokemon?',
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+          filled: true,
+          fillColor: Colors.white.withOpacity(0.1),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          prefixIcon: const Icon(Icons.search, color: Colors.white70),
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.send, color: Colors.white),
+            onPressed: checkGuess,
+          ),
+        ),
+        onSubmitted: (_) => checkGuess(),
+        textInputAction: TextInputAction.done,
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ElevatedButton(
+          onPressed: checkGuess,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFFD700),
+            foregroundColor: const Color(0xFF1a237e),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Text('Submit Guess'),
+        ),
+        const SizedBox(width: 16),
+        TextButton(
+          onPressed: giveUp,
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white70,
+          ),
+          child: const Text('Give Up'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResultMessage() {
+    if (isCorrect == null) return const SizedBox.shrink();
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Text(
+        isCorrect! ? 'Correct! It\'s ${currentCard!.name}!' : 'Nice try! It was ${currentCard!.name}.',
+        style: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: isCorrect! ? Colors.greenAccent : Colors.orangeAccent,
+          shadows: [
+            Shadow(
+              color: Colors.black.withOpacity(0.5),
+              offset: const Offset(1, 1),
+              blurRadius: 2,
+            ),
+          ],
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildCardDisplay() {
+    final imageUrl = currentCard!.images.large;
+    
+    return Hero(
+      tag: 'card_${currentCard!.id}',
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                // Card image with crop effect
+                if (!showFullCard)
+                  _buildCroppedCard(imageUrl)
+                else
+                  _buildFullCard(imageUrl),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCroppedCard(String imageUrl) {
+    return Container(
+      height: 500,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Stack(
+        children: [
+          // Only show bottom 30% of the card
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: ClipRect(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                heightFactor: 0.3, // Show only bottom 30%
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 500,
+                      color: Colors.grey[300],
+                      child: const Center(
+                        child: Icon(Icons.error, size: 50),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+          // Gradient overlay at the top to create mystery effect
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 350,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFF1a237e),
+                    const Color(0xFF1a237e).withOpacity(0.9),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.help_outline,
+                      size: 80,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Who\'s that Pokemon?',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFullCard(String imageUrl) {
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          height: 500,
+          color: Colors.grey[300],
+          child: const Center(
+            child: Icon(Icons.error, size: 50),
+          ),
+        );
+      },
+    );
+  }
+
+
+
+  Widget _buildCardInfo() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            currentCard!.name,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (currentCard!.supertype != null)
+            Text(
+              '${currentCard!.supertype} - ${currentCard!.types?.join(", ") ?? "Unknown"}',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white.withOpacity(0.8),
+              ),
+            ),
+          if (currentCard!.set != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Set: ${currentCard!.set!.name}',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.7),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNextButton() {
+    return ElevatedButton.icon(
+      onPressed: nextCard,
+      icon: const Icon(Icons.skip_next),
+      label: const Text('Next Card'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFFFD700),
+        foregroundColor: const Color(0xFF1a237e),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        elevation: 8,
       ),
     );
   }
