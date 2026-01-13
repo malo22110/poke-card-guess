@@ -140,9 +140,11 @@ export class GameService {
   getCurrentRoundData(lobby: GameLobby) {
     if (lobby.currentRound > lobby.cards.length) {
       lobby.status = 'FINISHED';
+      const finalScores = Object.fromEntries(lobby.scores);
+      console.log(`[Game Finished] Final scores:`, finalScores);
       return {
         status: 'FINISHED',
-        scores: Object.fromEntries(lobby.scores),
+        scores: finalScores,
       };
     }
     const card = lobby.cards[lobby.currentRound - 1];
@@ -176,6 +178,13 @@ export class GameService {
       const currentScore = lobby.scores.get(userId) || 0;
       lobby.scores.set(userId, currentScore + 1);
 
+      console.log(
+        `[Score Update] User ${userId} scored! New score: ${currentScore + 1}`,
+      );
+      console.log(
+        `[Round Info] Current round: ${lobby.currentRound}/${lobby.config.rounds}`,
+      );
+
       await this.saveRoundResult(userId, currentCard, true);
 
       const allFinished = lobby.players.every((p) => lobby.roundResults.get(p));
@@ -186,11 +195,22 @@ export class GameService {
         fullImageUrl: currentCard.fullImageUrl,
         set: currentCard.set,
         roundFinished: allFinished,
+        scores: Object.fromEntries(lobby.scores), // Include current scores
+        currentRound: lobby.currentRound,
+        totalRounds: lobby.config.rounds,
       };
 
       if (allFinished) {
+        console.log(
+          `[Round Complete] All players finished round ${lobby.currentRound}`,
+        );
+        console.log(
+          `[Scores] Current scores:`,
+          Object.fromEntries(lobby.scores),
+        );
         lobby.currentRound++;
         lobby.roundResults.clear();
+        console.log(`[Round Advance] Advanced to round ${lobby.currentRound}`);
       }
 
       return result;

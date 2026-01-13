@@ -209,11 +209,17 @@ class _GameScreenState extends State<GameScreen> {
        _revealedName = result['name'];
        _revealedSet = result['set'];
        
-       if (_isCorrect == true) {
-          score++; // Simple local score update, ideally sync with server
-          score = score; // Just to be explicit
+       // Update scores from server response if available
+       if (result['scores'] != null) {
+         _scores = Map<String, int>.from(result['scores']);
+         // Update local score for header display
+         if (_guestId != null && _scores.containsKey(_guestId)) {
+           score = _scores[_guestId]!;
+         }
+       } else if (_isCorrect == true) {
+         // Fallback: increment local score if server didn't send scores
+         score++;
        }
-       // attempts?
     });
   }
 
@@ -250,6 +256,10 @@ class _GameScreenState extends State<GameScreen> {
     
     if (data['status'] == 'FINISHED') {
        setState(() {
+         // Extract final scores before showing finished state
+         if (data['scores'] != null) {
+           _scores = Map<String, int>.from(data['scores']);
+         }
          error = 'Game Finished!';
          _isLoading = false;
        });
