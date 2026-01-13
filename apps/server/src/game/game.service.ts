@@ -3,6 +3,7 @@ import TCGdex from '@tcgdex/sdk';
 import axios from 'axios';
 import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
+import { PrismaService } from '../prisma.service';
 
 interface GameSession {
   cardId: string;
@@ -15,7 +16,31 @@ interface GameSession {
 export class GameService {
   private readonly tcgdex = new TCGdex('fr');
   // In-memory storage for active games (Not production ready for scaling, but fine for MVP)
-  private activeGames = new Map<string, GameSession>();
+  private gameSessions = new Map<string, GameSession>();
+
+  constructor(private prisma: PrismaService) {}
+
+  async saveGame(userId: string, gameId: string, correct: boolean) {
+    const session = this.gameSessions.get(gameId);
+    if (!session) return;
+
+    await this.prisma.game.create({
+      data: {
+        userId,
+        cardName: session.name,
+        cardSet: session.set,
+        correct,
+      },
+    });
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        totalAttempts: { increment: 1 },
+        totalScore: { increment: correct ? 1 : 0 },
+      },
+    });
+  }
 
   async startGame() {
     try {
@@ -47,7 +72,7 @@ export class GameService {
 
       // 3. Create Game Session
       const gameId = uuidv4();
-      this.activeGames.set(gameId, {
+      this.gameSessions.set(gameId, {
         cardId: card.id,
         name: card.name,
         fullImageUrl: fullImageUrl,
@@ -69,7 +94,7 @@ export class GameService {
   }
 
   async makeGuess(gameId: string, guess: string) {
-    const session = this.activeGames.get(gameId);
+    const session = this.gameSessions.get(gameId);
     if (!session) {
       throw new HttpException('Game session not found', HttpStatus.NOT_FOUND);
     }
@@ -83,7 +108,7 @@ export class GameService {
       normalizedActual.includes(normalizedGuess) && normalizedGuess.length >= 3;
 
     if (isCorrect) {
-      this.activeGames.delete(gameId); // Clean up
+      this.gameSessions.delete(gameId); // Clean up
       return {
         correct: true,
         name: session.name,
@@ -98,12 +123,12 @@ export class GameService {
   }
 
   async giveUp(gameId: string) {
-    const session = this.activeGames.get(gameId);
+    const session = this.gameSessions.get(gameId);
     if (!session) {
       throw new HttpException('Game session not found', HttpStatus.NOT_FOUND);
     }
 
-    this.activeGames.delete(gameId);
+    this.gameSessions.delete(gameId);
     return {
       name: session.name,
       fullImageUrl: session.fullImageUrl,

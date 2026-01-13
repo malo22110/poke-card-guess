@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Query,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { GameService } from './game.service';
 
 @Controller('game')
@@ -18,5 +27,18 @@ export class GameController {
   @Post('give-up')
   async giveUp(@Body() body: { gameId: string }) {
     return this.gameService.giveUp(body.gameId);
+  }
+
+  @Post('save')
+  @UseGuards(AuthGuard('jwt'))
+  async saveGame(
+    @Body() body: { gameId: string; correct: boolean },
+    @Req() req,
+  ) {
+    return this.gameService.saveGame(
+      req.user.userId,
+      body.gameId,
+      body.correct,
+    );
   }
 }
