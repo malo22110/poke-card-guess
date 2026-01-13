@@ -1,8 +1,58 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:pokemon_tcg/pokemon_tcg.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const PokeCardGuessApp());
+}
+
+class PokemonCard {
+  final String id;
+  final String name;
+  final CardImages images;
+  final CardSet? set;
+  final List<String>? types;
+  final String? supertype;
+
+  PokemonCard({
+    required this.id,
+    required this.name,
+    required this.images,
+    this.set,
+    this.types,
+    this.supertype,
+  });
+
+  factory PokemonCard.fromJson(Map<String, dynamic> json) {
+    return PokemonCard(
+      id: json['id'],
+      name: json['name'],
+      images: CardImages.fromJson(json['images']),
+      set: json['set'] != null ? CardSet.fromJson(json['set']) : null,
+      types: json['types'] != null ? List<String>.from(json['types']) : null,
+      supertype: json['supertype'],
+    );
+  }
+}
+
+class CardImages {
+  final String large;
+
+  CardImages({required this.large});
+
+  factory CardImages.fromJson(Map<String, dynamic> json) {
+    return CardImages(large: json['large']);
+  }
+}
+
+class CardSet {
+  final String name;
+
+  CardSet({required this.name});
+
+  factory CardSet.fromJson(Map<String, dynamic> json) {
+    return CardSet(name: json['name']);
+  }
 }
 
 class PokeCardGuessApp extends StatelessWidget {
@@ -34,7 +84,6 @@ class CardGuessGame extends StatefulWidget {
 }
 
 class _CardGuessGameState extends State<CardGuessGame> {
-  late PokemonTcgApi api;
   PokemonCard? currentCard;
   bool isLoading = true;
   bool showFullCard = false;
@@ -54,8 +103,6 @@ class _CardGuessGameState extends State<CardGuessGame> {
   void initState() {
     super.initState();
     _guessController = TextEditingController();
-    // Initialize API with API key from https://pokemontcg.io/
-    api = PokemonTcgApi(apiKey: '0236ceb1-a442-4657-b0ae-f8eeac60e5cc');
     loadRandomCard();
   }
 
@@ -69,38 +116,17 @@ class _CardGuessGameState extends State<CardGuessGame> {
     });
 
     try {
-      // 1. Fetch all sets first
-      final sets = await api.getSets();
-      
-      if (sets.isEmpty) {
-        throw Exception('No sets found');
-      }
+      // Call our backend instead of the external API directly
+      final response = await http.get(Uri.parse('http://localhost:3000/game/card'));
 
-      // 2. Pick a random set
-      final randomSet = (sets..shuffle()).first;
-
-      // 3. Fetch cards for that specific set
-      // This is much more efficient than fetching all cards
-      final cards = await api.getCardsForSet(randomSet.id);
-      
-      if (cards.isNotEmpty) {
-        // 4. Pick a random card from the set
-        // Filter out cards that don't have an image
-        final validCards = cards.where((c) => c.images.large.isNotEmpty).toList();
-        
-        if (validCards.isNotEmpty) {
-          final randomCard = (validCards..shuffle()).first;
-          setState(() {
-            currentCard = randomCard;
-            isLoading = false;
-          });
-        } else {
-          // If no valid cards in this set, try again
-          loadRandomCard();
-        }
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          currentCard = PokemonCard.fromJson(data);
+          isLoading = false;
+        });
       } else {
-        // If set is empty, try again
-        loadRandomCard();
+        throw Exception('Failed to load card: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
