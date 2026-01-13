@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/game_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/lobby_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -29,7 +30,6 @@ class _MyAppState extends State<MyApp> {
         _authToken = uri.queryParameters['token'];
       });
       print('Logged in with token: $_authToken');
-      // In a real app, you'd verify this token and/or store it in shared_preferences
     }
   }
 
@@ -47,8 +47,7 @@ class _MyAppState extends State<MyApp> {
         '/login': (context) => const LoginScreen(),
         '/game': (context) => const GameScreen(),
       },
-      // If we have a token, start at GameScreen, otherwise LoginScreen
-      home: _authToken != null ? const GameScreen() : const LoginScreen(),
+      home: _authToken != null ? LobbyScreen(authToken: _authToken) : const LoginScreen(),
     );
   }
 }

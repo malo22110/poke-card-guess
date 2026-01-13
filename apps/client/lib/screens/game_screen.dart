@@ -16,7 +16,11 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  String? _gameId;
+  String? _lobbyId;
+  String? _gameId; // Current round ID or similar
+  String? _authToken;
+  bool _isHost = false;
+
   String? _croppedImage;
   String? _fullImageUrl;
   String? _revealedName;
@@ -29,8 +33,12 @@ class _GameScreenState extends State<GameScreen> {
   int attempts = 0;
   late TextEditingController _guessController;
   bool? _isCorrect;
-
-  String? _authToken;
+  
+  @override
+  void initState() {
+    super.initState();
+    _guessController = TextEditingController();
+  }
 
   @override
   void dispose() {
@@ -39,46 +47,31 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _guessController = TextEditingController();
-    _checkAuth();
-    startNewGame();
-  }
-
-  // --- Auth Logic ---
-  void _checkAuth() {
-    final uri = Uri.base;
-    if (uri.queryParameters.containsKey('token')) {
-      setState(() {
-        _authToken = uri.queryParameters['token'];
-      });
-      debugPrint('Logged in with token: $_authToken');
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null) {
+      _lobbyId = args['lobbyId'];
+      _isHost = args['isHost'] ?? false;
+      _authToken = args['authToken'];
+      // Only start game if we haven't already and have the necessary data
+      if (_gameId == null) {
+        startNewGame();
+      }
     }
   }
 
-  Future<void> _login() async {
-    final url = Uri.parse('http://localhost:3000/auth/google');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, webOnlyWindowName: '_self');
-    }
-  }
-
-  void _logout() {
-    setState(() {
-      _authToken = null;
-    });
-  }
-  // --- End Auth Logic ---
+  // --- Auth Logic Removed (Handled in Main/Lobby) ---
 
   Future<void> startNewGame() async {
+    if (_lobbyId == null || _authToken == null) return;
+
     setState(() {
       _isLoading = true;
       showFullCard = false;
       error = null;
       _isCorrect = null;
       _guessController.clear();
-      _gameId = null;
       _croppedImage = null;
       _fullImageUrl = null;
       _revealedName = null;
@@ -86,41 +79,70 @@ class _GameScreenState extends State<GameScreen> {
     });
 
     try {
-      final response = await http.get(Uri.parse('http://localhost:3000/game/start'));
+      // If host, trigger start. If guest, we should probably just 'get state', 
+      // but for this MVP 'start' endpoint acts as 'get current round' too if game is playing.
+      // Re-using the /game/start endpoint which logic is now: fetch current round data.
+      
+      final response = await http.post(
+        Uri.parse('http://localhost:3000/game/start'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+        },
+        body: jsonEncode({'lobbyId': _lobbyId}),
+      );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
+        if (data['status'] == 'FINISHED') {
+           setState(() {
+             error = 'Game Finished!';
+             _isLoading = false;
+           });
+           return;
+        }
+
+        if (data['status'] == 'WAITING') {
+          // Poll again in 2 seconds
+          await Future.delayed(const Duration(seconds: 2));
+           if (mounted) startNewGame();
+           return;
+        }
+
         String croppedImage = data['croppedImage'];
         if (croppedImage.contains(',')) {
           croppedImage = croppedImage.split(',').last;
         }
         
         setState(() {
-          _gameId = data['gameId'];
+          _gameId = data['gameId']; // Uses Lobby ID effectively
           _croppedImage = croppedImage;
           _isLoading = false;
         });
       } else {
-        throw Exception('Failed to start game: ${response.statusCode}');
+        throw Exception('Failed to load game round: ${response.body}');
       }
     } catch (e) {
       setState(() {
-        error = 'Failed to start game: $e';
+        error = 'Failed to load game: $e';
         _isLoading = false;
       });
     }
   }
 
   Future<void> checkGuess() async {
-    if (_gameId == null || _guessController.text.isEmpty) return;
+    if (_lobbyId == null || _guessController.text.isEmpty) return;
 
     try {
       final response = await http.post(
         Uri.parse('http://localhost:3000/game/guess'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+        },
         body: jsonEncode({
-          'gameId': _gameId,
+          'lobbyId': _lobbyId,
           'guess': _guessController.text,
         }),
       );
@@ -137,6 +159,10 @@ class _GameScreenState extends State<GameScreen> {
             error = null;
             score++;
             attempts++;
+          } else {
+             ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Incorrect! Try again.')),
+            );
           }
         });
       }
@@ -148,29 +174,10 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> giveUp() async {
-    if (_gameId == null) return;
-
-    try {
-      final response = await http.post(
-        Uri.parse('http://localhost:3000/game/give-up'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'gameId': _gameId}),
-      );
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        setState(() {
-          showFullCard = true;
-          _isCorrect = false;
-          _fullImageUrl = result['fullImageUrl'];
-          _revealedName = result['name'];
-          _revealedSet = result['set'];
-          attempts++;
-        });
-      }
-    } catch (e) {
-      print('Error giving up: $e');
-    }
+    // TODO: Implement give up for Lobby mode (maybe skip vote?)
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Give up not yet implemented for multiplayer mode.')),
+    );
   }
 
   void nextCard() {
