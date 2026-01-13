@@ -26,7 +26,13 @@ export class GameController {
   @Post('create')
   @UseGuards(OptionalJwtAuthGuard)
   createLobby(
-    @Body() body: { rounds?: number; sets?: string[]; secretOnly?: boolean },
+    @Body()
+    body: {
+      rounds?: number;
+      sets?: string[];
+      secretOnly?: boolean;
+      rarities?: string[];
+    },
     @Req() req: any,
   ) {
     const userId = req.user
@@ -37,6 +43,7 @@ export class GameController {
       rounds: body.rounds,
       sets: body.sets,
       secretOnly: body.secretOnly,
+      rarities: body.rarities,
     });
   }
 
@@ -105,5 +112,11 @@ export class GameController {
   @UseGuards(OptionalJwtAuthGuard)
   async getSets() {
     return this.gameService.getAvailableSets();
+  }
+
+  @Get('rarities')
+  @UseGuards(OptionalJwtAuthGuard)
+  async getRarities() {
+    return await this.gameService.getAvailableRarities();
   }
 }

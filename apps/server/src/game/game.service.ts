@@ -9,6 +9,14 @@ export interface GameConfig {
   rounds: number;
   sets: string[]; // ['all'] or specific set IDs
   secretOnly: boolean;
+  rarities?: string[]; // Optional custom rarities list
+}
+
+export interface CardSummary {
+  id: string;
+  localId: string;
+  name: string;
+  image: string;
 }
 
 export interface GameLobby {
@@ -39,6 +47,9 @@ export class GameService {
   // In-memory storage for lobbies
   private lobbies = new Map<string, GameLobby>();
 
+  // Cache for special rarities to avoid fetching on every game
+  private specialRaritiesCache: string[] | null = null;
+
   constructor(private prisma: PrismaService) {}
 
   // --- Lobby Management ---
@@ -53,6 +64,7 @@ export class GameService {
         rounds: config.rounds || 10,
         sets: config.sets || ['151'],
         secretOnly: config.secretOnly || true,
+        rarities: config.rarities,
       },
       status: 'WAITING',
       currentRound: 0,
@@ -263,10 +275,41 @@ export class GameService {
     let attempts = 0;
     const maxAttempts = config.rounds * 5;
 
+    // If secretOnly is enabled, fetch all secret rare cards first
+    let availableCards: CardSummary[] = [];
+    if (config.secretOnly) {
+      try {
+        availableCards = await this.fetchSecretRareCards(
+          config.sets,
+          config.rarities,
+        );
+        console.log(`Found ${availableCards.length} secret rare cards`);
+      } catch (e) {
+        console.error('Failed to fetch secret rare cards', e);
+        return cards;
+      }
+    }
+
     while (cards.length < config.rounds && attempts < maxAttempts) {
       attempts++;
       try {
-        const cardData = await this.fetchRandomCardRaw(config.sets);
+        let cardData;
+
+        if (config.secretOnly && availableCards.length > 0) {
+          // Pick a random card from the pre-fetched secret rare cards
+          const randomIndex = Math.floor(Math.random() * availableCards.length);
+          const cardSummary = availableCards[randomIndex];
+
+          // Remove it from the available pool to avoid duplicates
+          availableCards.splice(randomIndex, 1);
+
+          // Fetch full card details
+          cardData = await this.tcgdex.fetch('cards', cardSummary.id);
+        } else {
+          // Use the old method for non-secret cards
+          cardData = await this.fetchRandomCardRaw(config.sets);
+        }
+
         if (!cardData) continue;
         if (cards.some((c) => c.id === cardData.id)) continue;
 
@@ -314,6 +357,96 @@ export class GameService {
     return card;
   }
 
+  private async fetchSecretRareCards(
+    allowedSets: string[] = ['all'],
+    customRarities?: string[],
+  ): Promise<CardSummary[]> {
+    try {
+      // Use custom rarities if provided, otherwise use cached/fetched special rarities
+      let specialRarities: string[];
+
+      if (customRarities && customRarities.length > 0) {
+        // Use the custom rarities provided by the user
+        specialRarities = customRarities;
+        console.log(`Using custom rarities: ${specialRarities.join(', ')}`);
+      } else if (this.specialRaritiesCache) {
+        specialRarities = this.specialRaritiesCache;
+        console.log('Using cached special rarities');
+      } else {
+        // First, fetch all available rarities
+        const raritiesUrl = 'https://api.tcgdex.net/v2/fr/rarities';
+        const raritiesResponse = await axios.get<string[]>(raritiesUrl);
+        const allRarities = raritiesResponse.data;
+
+        // Define rarities to EXCLUDE (common/basic rarities)
+        const excludedRarities = [
+          'Commune', // Common
+          'Peu Commune', // Uncommon
+          'Rare', // Rare
+          'Rare Holo', // Rare Holo
+          'Holo Rare', // Holo Rare
+          'Sans Rareté', // None
+          'Un Diamant', // One Diamond
+          'Deux Diamants', // Two Diamonds
+          'Trois Diamants', // Three Diamonds
+          'Quatre Diamants', // Four Diamonds
+          'Une Étoile', // One Star
+          'Deux Étoiles', // Two Stars
+          'Trois Étoiles', // Three Stars
+          'Couronne', // Crown
+          'Double rare',
+        ];
+
+        // Filter to get only special/ultra rare cards
+        specialRarities = allRarities.filter(
+          (rarity) => !excludedRarities.includes(rarity),
+        );
+
+        // Cache the result
+        this.specialRaritiesCache = specialRarities;
+        console.log(
+          `Fetched and cached special rarities: ${specialRarities.join(', ')}`,
+        );
+      }
+
+      console.log(`Using special rarities: ${specialRarities.join(', ')}`);
+
+      // Fetch cards for each special rarity
+      const allCards: CardSummary[] = [];
+      const baseUrl = 'https://api.tcgdex.net/v2/fr/cards';
+
+      for (const rarity of specialRarities) {
+        let url = `${baseUrl}?rarity=eq:${encodeURIComponent(rarity)}`;
+
+        // If specific sets are requested, filter by set as well
+        if (allowedSets.length > 0 && !allowedSets.includes('all')) {
+          const setsFilter = allowedSets.join('|');
+          url += `&set.id=${setsFilter}`;
+        }
+
+        try {
+          const response = await axios.get<CardSummary[]>(url);
+          const cards = response.data;
+
+          if (Array.isArray(cards)) {
+            allCards.push(...cards);
+            console.log(`Fetched ${cards.length} cards with rarity: ${rarity}`);
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch cards for rarity ${rarity}:`, error);
+        }
+      }
+
+      console.log(
+        `Successfully fetched ${allCards.length} total special rare cards`,
+      );
+      return allCards;
+    } catch (error) {
+      console.error('Error fetching secret rare cards:', error);
+      throw error;
+    }
+  }
+
   async getAvailableSets() {
     const sets = await this.tcgdex.fetch('sets');
     if (!sets) return [];
@@ -324,6 +457,17 @@ export class GameService {
       symbol: s.symbol,
       cardCount: s.cardCount,
     }));
+  }
+
+  async getAvailableRarities() {
+    try {
+      const raritiesUrl = 'https://api.tcgdex.net/v2/fr/rarities';
+      const response = await axios.get<string[]>(raritiesUrl);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching rarities:', error);
+      return [];
+    }
   }
 
   async saveRoundResult(userId: string, card: GameCard, correct: boolean) {
@@ -358,7 +502,7 @@ export class GameService {
     if (!metadata.width || !metadata.height) {
       throw new Error('Could not get image metadata');
     }
-    const cropHeight = Math.floor(metadata.height * 0.3);
+    const cropHeight = Math.floor(metadata.height * 0.1);
     const top = metadata.height - cropHeight;
     const croppedBuffer = await image
       .extract({ left: 0, top: top, width: metadata.width, height: cropHeight })
