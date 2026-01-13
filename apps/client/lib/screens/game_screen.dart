@@ -55,6 +55,9 @@ class _GameScreenState extends State<GameScreen> {
   int _currentRound = 0;
   int _totalRounds = 0;
   
+  // Card history for final screen
+  List<Map<String, String>> _cardHistory = [];
+  
   // Actually the Gateway emits 'guessResult' only to the guesser. 
   // It emits 'roundFinished' to EVERYONE if correct.
   // We need to differentiate "My Guess Result" (which might be "Wrong, try again") vs "Round Finished" (someone won/gave up).
@@ -193,7 +196,7 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
-  void _showResult(Map<String, dynamic> result) {
+   void _showResult(Map<String, dynamic> result) {
     _stopRoundTimer(); // Stop the timer when result is shown
     if (!mounted) return;
     
@@ -208,6 +211,15 @@ class _GameScreenState extends State<GameScreen> {
        _fullImageUrl = result['fullImageUrl'];
        _revealedName = result['name'];
        _revealedSet = result['set'];
+       
+       // Add card to history for final screen display
+       if (_revealedName != null && _fullImageUrl != null) {
+         _cardHistory.add({
+           'name': _revealedName!,
+           'imageUrl': _fullImageUrl!,
+           'set': _revealedSet ?? '',
+         });
+       }
        
        // Update scores from server response if available
        if (result['scores'] != null) {
@@ -411,12 +423,82 @@ class _GameScreenState extends State<GameScreen> {
               currentUserId: _guestId,
             ),
           const SizedBox(height: 24),
+          
+          // Card History Section
+          if (_cardHistory.isNotEmpty) ...[
+            Container(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Cards from this game:',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 300),
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 150,
+                        childAspectRatio: 0.7,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                      itemCount: _cardHistory.length,
+                      itemBuilder: (context, index) {
+                        final card = _cardHistory[index];
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  card['imageUrl']!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: Colors.grey,
+                                      child: const Icon(Icons.error, color: Colors.white),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              card['name']!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+          
           ElevatedButton.icon(
             onPressed: () {
-              Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+              Navigator.of(context).pushNamedAndRemoveUntil('/lobby', (route) => false);
             },
-            icon: const Icon(Icons.home),
-            label: const Text('Exit to Main Menu'),
+            icon: const Icon(Icons.arrow_back),
+            label: const Text('Back to Lobby'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF3B4CCA),
