@@ -99,8 +99,8 @@ class LoginScreen extends StatelessWidget {
                   const SizedBox(height: 40),
                   TextButton(
                     onPressed: () {
-                      // Navigate to GameScreen directly (Guest mode)
-                      Navigator.of(context).pushReplacementNamed('/game');
+                      // Navigate to LobbyScreen directly (Guest mode)
+                      Navigator.of(context).pushReplacementNamed('/lobby');
                     },
                     child: Text(
                       'Continue as Guest',

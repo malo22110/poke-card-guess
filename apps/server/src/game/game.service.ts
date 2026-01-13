@@ -48,8 +48,8 @@ export class GameService {
       players: [hostId],
       config: {
         rounds: config.rounds || 10,
-        sets: config.sets || ['all'],
-        secretOnly: config.secretOnly || false,
+        sets: config.sets || ['151'],
+        secretOnly: config.secretOnly || true,
       },
       status: 'WAITING',
       currentRound: 0,
@@ -80,6 +80,19 @@ export class GameService {
       throw new HttpException('Lobby not found', HttpStatus.NOT_FOUND);
     }
     return lobby;
+  }
+
+  getLobbyStatus(lobbyId: string) {
+    const lobby = this.lobbies.get(lobbyId);
+    if (!lobby) {
+      throw new HttpException('Lobby not found', HttpStatus.NOT_FOUND);
+    }
+    return {
+      status: lobby.status,
+      players: lobby.players.length,
+      hostId: lobby.hostId,
+      config: lobby.config,
+    };
   }
 
   // --- Game Logic ---
@@ -157,23 +170,47 @@ export class GameService {
     }
   }
 
+  async giveUp(lobbyId: string, userId: string) {
+    const lobby = this.lobbies.get(lobbyId);
+    if (!lobby || lobby.status !== 'PLAYING') {
+      throw new HttpException('Game not active', HttpStatus.BAD_REQUEST);
+    }
+
+    const currentCard = lobby.cards[lobby.currentRound - 1];
+
+    // Result for giving up
+    const result = {
+      name: currentCard.name,
+      fullImageUrl: currentCard.fullImageUrl,
+      set: currentCard.set,
+    };
+
+    // Advance round
+    lobby.currentRound++;
+
+    // Save result to DB (History) as incorrect
+    await this.saveRoundResult(userId, currentCard, false);
+
+    return result;
+  }
+
   // --- Helpers ---
 
   private async fetchGameCards(config: GameConfig): Promise<GameCard[]> {
     const cards: GameCard[] = [];
-    // Currently fetching random cards one by one.
-    // Optimization: Fetch a pool of cards matching criteria.
-
-    // For now, implementing simple loop until we get enough valid cards
     let attempts = 0;
-    while (cards.length < config.rounds && attempts < config.rounds * 3) {
+
+    // Safety break
+    const maxAttempts = config.rounds * 5;
+
+    while (cards.length < config.rounds && attempts < maxAttempts) {
       attempts++;
       try {
-        const cardData = await this.fetchRandomCardRaw(); // Helper to get a single random card
+        const cardData = await this.fetchRandomCardRaw(config.sets);
         if (!cardData) continue;
 
-        // TODO: Apply filters (Sets, Secret Rare) here
-        // If config.sets is not 'all', check if card.set.id is in config.sets
+        // Ensure unique cards in the game
+        if (cards.some((c) => c.id === cardData.id)) continue;
 
         const imageBuffer = await this.downloadImage(
           `${cardData.image}/high.png`,
@@ -194,14 +231,22 @@ export class GameService {
     return cards;
   }
 
-  private async fetchRandomCardRaw() {
-    const sets = await this.tcgdex.fetch('sets');
-    if (!sets || sets.length === 0) return null;
+  private async fetchRandomCardRaw(allowedSets: string[] = ['all']) {
+    let setId: string;
 
-    const randomSetSummary = sets[Math.floor(Math.random() * sets.length)];
-    if (!randomSetSummary) return null;
+    if (allowedSets.length > 0 && !allowedSets.includes('all')) {
+      // Pick a random set from the allowed list
+      setId = allowedSets[Math.floor(Math.random() * allowedSets.length)];
+    } else {
+      // Pick any random set from API
+      const sets = await this.tcgdex.fetch('sets');
+      if (!sets || sets.length === 0) return null;
+      const randomSetSummary = sets[Math.floor(Math.random() * sets.length)];
+      if (!randomSetSummary) return null;
+      setId = randomSetSummary.id;
+    }
 
-    const setDetails = await this.tcgdex.fetch('sets', randomSetSummary.id);
+    const setDetails = await this.tcgdex.fetch('sets', setId);
     if (!setDetails || !setDetails.cards || setDetails.cards.length === 0)
       return null;
 
@@ -215,9 +260,24 @@ export class GameService {
     return card;
   }
 
+  async getAvailableSets() {
+    const sets = await this.tcgdex.fetch('sets');
+    if (!sets) return [];
+    // Return relevant simplified info
+    return sets.map((s) => ({
+      id: s.id,
+      name: s.name,
+      logo: s.logo, // .png or .jpg usually available
+      symbol: s.symbol,
+      cardCount: s.cardCount,
+    }));
+  }
+
   // --- Legacy / Database Logic ---
 
   async saveRoundResult(userId: string, card: GameCard, correct: boolean) {
+    if (userId.startsWith('guest')) return; // Don't save stats for guests
+
     // Keeping legacy prisma write for user stats
     await this.prisma.game.create({
       data: {

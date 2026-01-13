@@ -16,6 +16,10 @@ class _LobbyScreenState extends State<LobbyScreen> {
   bool _isLoading = false;
   String? _error;
 
+  double _rounds = 10;
+  bool _secretOnly = true;
+  final TextEditingController _setIdController = TextEditingController(text: '151');
+
   Future<void> _createGame() async {
     setState(() {
       _isLoading = true;
@@ -29,7 +33,13 @@ class _LobbyScreenState extends State<LobbyScreen> {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${widget.authToken}',
         },
-        body: jsonEncode({'rounds': 10}), // Default to 10 rounds for now
+        body: jsonEncode(
+          {
+            'rounds': _rounds.toInt(),
+            'sets': [_setIdController.text.trim()],
+            'secretOnly': _secretOnly,
+          }
+        ),
       );
 
       if (response.statusCode == 201) {
@@ -66,7 +76,15 @@ class _LobbyScreenState extends State<LobbyScreen> {
       );
 
       if (response.statusCode == 201) {
-        _navigateToGame(lobbyId, isHost: false);
+        final data = jsonDecode(response.body);
+        final guestId = data['guestId']; // Extract guestId from join response
+        
+        Navigator.of(context).pushNamed('/waiting-room', arguments: {
+          'lobbyId': lobbyId,
+          'isHost': false,
+          'authToken': widget.authToken,
+          'guestId': guestId, // Pass the joined user's guestId (if they are a guest)
+        });
       } else {
         throw Exception('Failed to join game: ${response.body}');
       }
@@ -78,11 +96,85 @@ class _LobbyScreenState extends State<LobbyScreen> {
   }
 
   void _navigateToGame(String lobbyId, {required bool isHost}) {
-    Navigator.of(context).pushNamed('/game', arguments: {
+    Navigator.of(context).pushNamed('/waiting-room', arguments: {
       'lobbyId': lobbyId,
       'isHost': isHost,
       'authToken': widget.authToken,
+      // 'guestId': ... we need this if we are a guest joining!
     });
+  }
+
+  void _showCreateGameDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1a237e),
+              title: const Text('Game Configuration', style: TextStyle(color: Colors.white)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Rounds', style: TextStyle(color: Colors.white70)),
+                    Slider(
+                      value: _rounds,
+                      min: 1,
+                      max: 50,
+                      divisions: 49,
+                      label: _rounds.round().toString(),
+                      onChanged: (value) => setState(() => _rounds = value),
+                    ),
+                    Text('${_rounds.round()} Rounds', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Secret Cards Only', style: TextStyle(color: Colors.white70)),
+                        Switch(
+                          value: _secretOnly,
+                          onChanged: (value) => setState(() => _secretOnly = value),
+                          activeColor: Colors.amber,
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _setIdController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: 'Card Set ID (e.g. 151, base1)',
+                        labelStyle: const TextStyle(color: Colors.white70),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.1),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _createGame();
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: Colors.black),
+                  child: const Text('Start Game'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -136,7 +228,11 @@ class _LobbyScreenState extends State<LobbyScreen> {
                       ),
 
                     ElevatedButton(
-                      onPressed: _isLoading ? null : _createGame,
+                      onPressed: _isLoading ? null : () {
+                        Navigator.of(context).pushNamed('/create-game', arguments: {
+                          'authToken': widget.authToken
+                        });
+                      },
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         backgroundColor: Colors.amber,

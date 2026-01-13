@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'screens/game_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/lobby_screen.dart';
+import 'screens/create_game_screen.dart';
+import 'screens/waiting_room_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -46,6 +48,9 @@ class _MyAppState extends State<MyApp> {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/game': (context) => const GameScreen(),
+        '/lobby': (context) => const LobbyScreen(),
+        '/create-game': (context) => const CreateGameScreen(),
+        '/waiting-room': (context) => const WaitingRoomScreen(),
       },
       home: _authToken != null ? LobbyScreen(authToken: _authToken) : const LoginScreen(),
     );
