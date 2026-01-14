@@ -22,15 +22,14 @@ class LoginScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1a237e),
-              Color(0xFF3B4CCA),
-              Color(0xFF5E35B1),
-            ],
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: const AssetImage('assets/images/landscape.png'),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.black.withOpacity(0.6),
+              BlendMode.darken,
+            ),
           ),
         ),
         child: SafeArea(
@@ -41,33 +40,10 @@ class LoginScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo / Title area
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.1),
-                    ),
-                    child: const Icon(
-                      Icons.catching_pokemon,
-                      size: 80,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'PokeCard Guess',
-                    style: TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withOpacity(0.3),
-                          offset: const Offset(2, 2),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
+                  Image.asset(
+                    'assets/images/pokecardguess.png',
+                    height: 300,
+                    fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 8),
                   Text(

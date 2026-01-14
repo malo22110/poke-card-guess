@@ -181,35 +181,34 @@ class _LobbyScreenState extends State<LobbyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF1a237e), Color(0xFF5E35B1)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: const AssetImage('assets/images/landscape.png'),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.black.withOpacity(0.6),
+              BlendMode.darken,
+            ),
           ),
         ),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 400),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Icon(Icons.catching_pokemon, size: 80, color: Colors.white),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'PokeCard Guess',
-                      style: TextStyle(
-                        fontSize: 32, 
-                        fontWeight: FontWeight.bold, 
-                        color: Colors.white
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 48),
+              child: Column(
+                children: [
+                  Image.asset(
+                    'assets/images/pokecardguess.png',
+                    height: 300,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(height: 48),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
 
                     if (_error != null)
                       Container(
@@ -258,16 +257,28 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
                     TextField(
                       controller: _lobbyIdController,
-                      style: const TextStyle(color: Colors.white),
+                      style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.1),
+                        fillColor: Colors.white.withOpacity(0.9),
                         hintText: 'Enter Lobby ID to Join',
-                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        hintStyle: const TextStyle(color: Colors.black54),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.white, width: 2),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF3B4CCA), width: 3),
+                        ),
                       ),
                       textAlign: TextAlign.center,
                       textCapitalization: TextCapitalization.characters,
+                      cursorColor: const Color(0xFF3B4CCA),
                     ),
                     const SizedBox(height: 16),
                     OutlinedButton(
@@ -282,10 +293,12 @@ class _LobbyScreenState extends State<LobbyScreen> {
                   ],
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }

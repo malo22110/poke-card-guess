@@ -29,6 +29,7 @@ export interface GameLobby {
   cards: GameCard[];
   roundResults: Map<string, boolean>; // userId -> hasFinishedRound
   scores: Map<string, number>; // userId -> total score
+  roundStartTime: number;
   timer?: any; // NodeJS.Timeout
 }
 
@@ -71,6 +72,7 @@ export class GameService {
       cards: [],
       roundResults: new Map(),
       scores: new Map([[hostId, 0]]), // Initialize host score
+      roundStartTime: 0,
     };
 
     this.lobbies.set(lobbyId, newLobby);
@@ -132,6 +134,7 @@ export class GameService {
     lobby.cards = await this.fetchGameCards(lobby.config);
     lobby.status = 'PLAYING';
     lobby.currentRound = 1;
+    lobby.roundStartTime = Date.now();
     lobby.roundResults.clear();
 
     return this.getCurrentRoundData(lobby);
@@ -179,12 +182,18 @@ export class GameService {
     if (isCorrect) {
       lobby.roundResults.set(userId, true);
 
-      // Increment score
+      // Calculate score based on time taken (points = remaining milliseconds of 30s round)
+      const elapsedTime = Math.max(
+        0,
+        Date.now() - (lobby.roundStartTime || Date.now()),
+      );
+      const roundScore = Math.max(0, 30000 - elapsedTime);
+
       const currentScore = lobby.scores.get(userId) || 0;
-      lobby.scores.set(userId, currentScore + 1);
+      lobby.scores.set(userId, currentScore + roundScore);
 
       console.log(
-        `[Score Update] User ${userId} scored! New score: ${currentScore + 1}`,
+        `[Score Update] User ${userId} scored ${roundScore} points! New total: ${currentScore + roundScore}`,
       );
       console.log(
         `[Round Info] Current round: ${lobby.currentRound}/${lobby.config.rounds}`,
@@ -214,6 +223,7 @@ export class GameService {
           Object.fromEntries(lobby.scores),
         );
         lobby.currentRound++;
+        lobby.roundStartTime = Date.now();
         lobby.roundResults.clear();
         console.log(`[Round Advance] Advanced to round ${lobby.currentRound}`);
       }
@@ -245,6 +255,7 @@ export class GameService {
 
     if (allFinished) {
       lobby.currentRound++;
+      lobby.roundStartTime = Date.now();
       lobby.roundResults.clear();
     }
 
@@ -267,6 +278,7 @@ export class GameService {
 
     // Advance round
     lobby.currentRound++;
+    lobby.roundStartTime = Date.now();
     lobby.roundResults.clear();
 
     return {
