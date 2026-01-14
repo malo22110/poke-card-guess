@@ -17,7 +17,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
   // Custom Config State
   double _rounds = 10;
   bool _secretOnly = true;
-  String? _selectedSetId;
+  List<String> _selectedSetIds = [];
   List<dynamic> _availableSets = [];
   List<String> _availableRarities = [];
   List<String> _selectedRarities = [];
@@ -228,8 +228,8 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
         return;
       }
     } else {
-      if (_selectedSetId == null) {
-        setState(() => _error = 'Please select a card set');
+      if (_selectedSetIds.isEmpty) {
+        setState(() => _error = 'Please select at least one card set');
         return;
       }
     }
@@ -248,7 +248,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
       } else {
         // Custom Mode
         body['rounds'] = _rounds.toInt();
-        body['sets'] = [_selectedSetId!];
+        body['sets'] = _selectedSetIds;
         body['secretOnly'] = _secretOnly;
         if (_secretOnly && _selectedRarities.isNotEmpty) {
           body['rarities'] = _selectedRarities;
@@ -465,7 +465,12 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
           const SizedBox(height: 32),
 
           // Set Selection Section
-          _buildSectionTitle('Select Card Set'),
+          _buildSectionTitle('Select Card Sets'),
+          const SizedBox(height: 8),
+          Text(
+            '${_selectedSetIds.length} sets selected',
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
           const SizedBox(height: 16),
           _buildSearchInput(),
           const SizedBox(height: 16),
@@ -484,21 +489,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
           _buildRaritiesSection(),
           const SizedBox(height: 32),
 
-          // Save Button
-          if (_authToken != null && _selectedSetId != null)
-            Center(
-              child: OutlinedButton.icon(
-                onPressed: _showSavePresetDialog,
-                icon: const Icon(Icons.save_alt),
-                label: const Text('Save as Community Mode'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.amber,
-                  side: const BorderSide(color: Colors.amber),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                ),
-              ),
-            ),
-          const SizedBox(height: 24),
+
         ],
       ),
     );
@@ -558,7 +549,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
     try {
       final config = {
         'rounds': _rounds.toInt(),
-        'sets': [_selectedSetId!],
+        'sets': _selectedSetIds,
         'secretOnly': _secretOnly,
         if (_secretOnly && _selectedRarities.isNotEmpty)
           'rarities': _selectedRarities,
@@ -733,9 +724,17 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
       itemCount: _filteredSets.length,
       itemBuilder: (context, index) {
         final set = _filteredSets[index];
-        final isSelected = _selectedSetId == set['id'];
+        final isSelected = _selectedSetIds.contains(set['id']);
         return GestureDetector(
-          onTap: () => setState(() => _selectedSetId = set['id']),
+          onTap: () {
+            setState(() {
+              if (isSelected) {
+                _selectedSetIds.remove(set['id']);
+              } else {
+                _selectedSetIds.add(set['id']);
+              }
+            });
+          },
           child: Container(
             decoration: BoxDecoration(
               color: isSelected ? Colors.amber.withOpacity(0.2) : Colors.white.withOpacity(0.05),
@@ -794,10 +793,25 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
         boxShadow: const [BoxShadow(blurRadius: 10, color: Colors.black45)],
       ),
       child: SafeArea(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            ElevatedButton(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 600;
+            final showSaveButton = _tabController.index == 1 && _authToken != null && _selectedSetIds.isNotEmpty;
+
+            final saveButton = OutlinedButton.icon(
+              onPressed: _showSavePresetDialog,
+              icon: const Icon(Icons.save_alt),
+              label: const Text('Save Mode'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.amber,
+                side: const BorderSide(color: Colors.amber),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                minimumSize: isMobile ? const Size(double.infinity, 50) : null,
+              ),
+            );
+
+            final createButton = ElevatedButton(
               onPressed: _authToken == null 
                   ? null 
                   : () {
@@ -805,7 +819,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
                     if (_tabController.index == 0) {
                        return _selectedGameModeId != null ? _createGame : null;
                     } else {
-                       return _selectedSetId != null ? _createGame : null;
+                       return _selectedSetIds.isNotEmpty ? _createGame : null;
                     }
                   }(),
               style: ElevatedButton.styleFrom(
@@ -815,6 +829,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
                 disabledForegroundColor: Colors.white.withOpacity(0.5),
                 padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                minimumSize: isMobile ? const Size(double.infinity, 50) : null,
               ),
               child: _authToken == null
                   ? const Text('LOGIN TO CREATE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
@@ -824,12 +839,33 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
                           children: [
                             SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)),
                             SizedBox(width: 12),
-                            Text('Fetching random cards...', style: TextStyle(fontWeight: FontWeight.bold)),
+                            Text('Fetching...', style: TextStyle(fontWeight: FontWeight.bold)),
                           ],
                         )
                       : const Text('CREATE GAME', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-            ),
-          ],
+            );
+
+            if (isMobile) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  createButton,
+                  if (showSaveButton) ...[
+                    const SizedBox(height: 12),
+                    saveButton,
+                  ],
+                ],
+              );
+            } else {
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                   if (showSaveButton) saveButton else const SizedBox.shrink(),
+                   createButton,
+                ],
+              );
+            }
+          },
         ),
       ),
     );
