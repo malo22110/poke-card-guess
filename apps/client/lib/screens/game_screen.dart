@@ -475,20 +475,49 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildErrorState() {
     // Check if this is a "Game Finished" state
     final isGameFinished = error == 'Game Finished!';
-    
-    return SingleChildScrollView(
+
+    if (!isGameFinished) {
+      // Regular error state (just centered icon and text)
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 80,
+              color: Colors.red.withOpacity(0.7),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              error ?? 'Unknown Error',
+              style: const TextStyle(color: Colors.white, fontSize: 18),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pushNamedAndRemoveUntil('/lobby', (route) => false);
+              },
+              child: const Text('Back to Lobby'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Game Finished State
+    final content = SingleChildScrollView(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-        if (isGameFinished) ...[
-          // Final Scoreboard
-          Icon(
+          // Final Scoreboard Header
+          const Icon(
             Icons.emoji_events,
             size: 80,
             color: Colors.amber,
           ),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'Game Over!',
             style: TextStyle(
               color: Colors.white,
@@ -497,6 +526,7 @@ class _GameScreenState extends State<GameScreen> {
             ),
           ),
           const SizedBox(height: 24),
+          
           if (_scores.isNotEmpty)
             Scoreboard(
               scores: _scores,
@@ -508,11 +538,12 @@ class _GameScreenState extends State<GameScreen> {
           // Card History Section
           if (_cardHistory.isNotEmpty) ...[
             Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20),
               constraints: const BoxConstraints(maxWidth: 800),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Cards from this game:',
                     style: TextStyle(
                       color: Colors.white,
@@ -534,27 +565,24 @@ class _GameScreenState extends State<GameScreen> {
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
+                            color: Colors.white.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.white12),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Card Image
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
                                 child: Image.network(
                                   card['imageUrl']!,
                                   width: 60,
-                                  height: 84, // 0.7 aspect ratio
+                                  height: 84,
                                   fit: BoxFit.cover,
                                   errorBuilder: (c, e, s) => Container(width: 60, height: 84, color: Colors.grey),
                                 ),
                               ),
                               const SizedBox(width: 16),
-                              
-                              // Card Details & Results
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -565,13 +593,13 @@ class _GameScreenState extends State<GameScreen> {
                                     ),
                                     Text(
                                       card['set']!,
-                                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+                                      style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
                                     ),
                                     const SizedBox(height: 8),
                                     const Divider(color: Colors.white24, height: 1),
                                     const SizedBox(height: 8),
                                     if (results.isEmpty)
-                                       Text('No successful guesses', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontStyle: FontStyle.italic, fontSize: 12))
+                                       Text('No successful guesses', style: TextStyle(color: Colors.white.withOpacity(0.5), fontStyle: FontStyle.italic, fontSize: 12))
                                     else
                                        Column(
                                          children: results.map<Widget>((r) {
@@ -598,7 +626,7 @@ class _GameScreenState extends State<GameScreen> {
                                                           Text(
                                                             '${r['guess']}',
                                                             style: TextStyle(
-                                                              color: isCorrect ? Colors.greenAccent.withValues(alpha: 0.8) : Colors.white38,
+                                                              color: isCorrect ? Colors.greenAccent.withOpacity(0.8) : Colors.white38,
                                                               fontSize: 12,
                                                               fontStyle: FontStyle.italic
                                                             ),
@@ -633,55 +661,41 @@ class _GameScreenState extends State<GameScreen> {
             ),
             const SizedBox(height: 24),
           ],
-          
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.of(context).pushNamedAndRemoveUntil('/lobby', (route) => false);
-            },
-            icon: const Icon(Icons.arrow_back),
-            label: const Text('Back to Lobby'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF3B4CCA),
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ] else ...[
-          // Regular error state
-          Icon(
-            Icons.error_outline,
-            size: 80,
-            color: Colors.red.withValues(alpha: 0.7),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            error ?? 'An error occurred',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: startNewGame,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Try Again'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF3B4CCA),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
+
         ],
-      ],
       ),
+    );
+
+    return Column(
+      children: [
+        Expanded(child: content),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.3),
+            border: const Border(top: BorderSide(color: Colors.white12)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pushNamedAndRemoveUntil('/lobby', (route) => false);
+                },
+                icon: const Icon(Icons.arrow_back, color: Colors.indigo),
+                label: const Text('Back to Lobby', style: TextStyle(color: Colors.indigo)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.indigo,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -690,88 +704,114 @@ class _GameScreenState extends State<GameScreen> {
       return const SizedBox.shrink();
     }
 
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 900;
+
+        final gameContentWidget = Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Main game content (left side)
-            Expanded(
-              flex: 3,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CardDisplay(
-                    showFullCard: showFullCard,
-                    croppedImage: _croppedImage,
-                    fullImageUrl: _fullImageUrl,
-                  ),
-                  const SizedBox(height: 24),
-                  // Show waiting message if user gave up
-                  if (_isWaitingForRoundEnd && !showFullCard)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+            CardDisplay(
+              showFullCard: showFullCard,
+              croppedImage: _croppedImage,
+              fullImageUrl: _fullImageUrl,
+            ),
+            const SizedBox(height: 24),
+            // Show waiting message if user gave up
+            if (_isWaitingForRoundEnd && !showFullCard)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Waiting for round to end...',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else if (!showFullCard)
-                    GuessInput(
-                      controller: _guessController,
-                      onGuessSubmitted: checkGuess,
-                      onGiveUp: giveUp,
-                    )
-                  else
-                    ResultDisplay(
-                      isCorrect: _isCorrect,
-                      revealedName: _revealedName,
-                      revealedSet: _revealedSet,
                     ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Waiting for round to end...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (!showFullCard)
+              GuessInput(
+                controller: _guessController,
+                onGuessSubmitted: checkGuess,
+                onGiveUp: giveUp,
+              )
+            else
+              ResultDisplay(
+                isCorrect: _isCorrect,
+                revealedName: _revealedName,
+                revealedSet: _revealedSet,
+              ),
+          ],
+        );
+
+        final scoreboardWidget = Scoreboard(
+          scores: _scores,
+          currentUserId: _guestId,
+          playerStatuses: _playerStatuses,
+          playerNames: _playerNames,
+        );
+
+        if (isMobile) {
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  gameContentWidget,
+                  if (_scores.isNotEmpty) ...[
+                    const SizedBox(height: 32),
+                    Divider(color: Colors.white.withValues(alpha: 0.2)),
+                    const SizedBox(height: 16),
+                    scoreboardWidget,
+                  ],
                 ],
               ),
             ),
-            
-            // Scoreboard (right side)
-            if (_scores.isNotEmpty) ...[
-              const SizedBox(width: 20),
-              Expanded(
-                flex: 1,
-                child: Scoreboard(
-                  scores: _scores,
-                  currentUserId: _guestId,
-                  playerStatuses: _playerStatuses,
-                  playerNames: _playerNames,
-                ),
+          );
+        } else {
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: gameContentWidget,
+                  ),
+                  if (_scores.isNotEmpty) ...[
+                    const SizedBox(width: 20),
+                    Expanded(
+                      flex: 1,
+                      child: scoreboardWidget,
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ],
-        ),
-      ),
+            ),
+          );
+        }
+      },
     );
   }
 }
