@@ -520,13 +520,31 @@ class _GameScreenState extends State<GameScreen> {
                                                     color: isCorrect ? Colors.greenAccent : Colors.redAccent
                                                   ),
                                                   const SizedBox(width: 8),
-                                                  Expanded(child: Text(r['userId'] == _guestId ? 'You' : r['userId'], style: const TextStyle(color: Colors.white70, fontSize: 13))),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(r['userId'] == _guestId ? 'You' : r['userId'], style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                                                        if (r['guess'] != null)
+                                                          Text(
+                                                            '${r['guess']}',
+                                                            style: TextStyle(
+                                                              color: isCorrect ? Colors.greenAccent.withValues(alpha: 0.8) : Colors.white38,
+                                                              fontSize: 12,
+                                                              fontStyle: FontStyle.italic
+                                                            ),
+                                                            maxLines: 1,
+                                                            overflow: TextOverflow.ellipsis,
+                                                          ),
+                                                      ],
+                                                    ),
+                                                  ),
                                                   if (isCorrect) ...[
                                                     Text('${time.toStringAsFixed(1)}s', style: const TextStyle(color: Colors.white54, fontSize: 12)),
                                                     const SizedBox(width: 12),
                                                     Text('+$points pts', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
                                                   ] else 
-                                                    const Text('Given Up', style: TextStyle(color: Colors.white30, fontSize: 12))
+                                                    const Text('Failed', style: TextStyle(color: Colors.white30, fontSize: 12))
                                                ],
                                              ),
                                            );

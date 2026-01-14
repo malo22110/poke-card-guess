@@ -47,6 +47,7 @@ export interface RoundResult {
   points: number;
   timeTaken: number;
   correct: boolean;
+  guess: string;
 }
 
 @Injectable()
@@ -225,6 +226,7 @@ export class GameService {
         points: roundScore,
         timeTaken: elapsedTime,
         correct: true,
+        guess: guess,
       });
       lobby.history.set(lobby.currentRound, currentRoundHistory);
 
@@ -282,6 +284,7 @@ export class GameService {
       points: 0,
       timeTaken: elapsedTime,
       correct: false,
+      guess: 'Given Up',
     });
     lobby.history.set(lobby.currentRound, currentRoundHistory);
 
@@ -322,6 +325,7 @@ export class GameService {
           points: 0,
           timeTaken: 30000, // Timeout
           correct: false,
+          guess: 'Timeout',
         });
         lobby.history.set(lobby.currentRound, currentRoundHistory);
       }
