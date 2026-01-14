@@ -213,6 +213,8 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                   
                   Container(
                     padding: const EdgeInsets.all(24),
+                    width: double.infinity,
+                    constraints: const BoxConstraints(maxWidth: 500),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -224,78 +226,47 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                         const SizedBox(height: 16),
                         Text(
                           '$_playerCount Player(s) Joined',
-                          style: const TextStyle(fontSize: 24, color: Colors.white),
+                          style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 24),
+                        if (_playerList.isNotEmpty)
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.center,
+                            children: _playerList.map((player) {
+                               final isMe = (player == guestId || player == authToken || player == _guestName || player == _userName);
+                               return Chip(
+                                  avatar: CircleAvatar(
+                                    backgroundColor: isMe ? Colors.amber : Colors.indigo.shade900,
+                                    child: Text(player.substring(0, 1).toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10)),
+                                  ),
+                                  label: Text(
+                                      isMe ? 'You ($player)' : player,
+                                      style: TextStyle(
+                                        fontSize: 14, 
+                                        fontWeight: isMe ? FontWeight.bold : FontWeight.normal
+                                      )
+                                  ),
+                                  backgroundColor: isMe ? Colors.amber.withOpacity(0.2) : Colors.white.withOpacity(0.9),
+                                  side: isMe ? const BorderSide(color: Colors.amber) : null,
+                               );
+                            }).toList(),
+                          )
+                        else
+                          const SizedBox(
+                            width: 24, 
+                            height: 24, 
+                            child: CircularProgressIndicator(color: Colors.amber, strokeWidth: 2)
+                          ),
+                        const SizedBox(height: 16),
                          const Text(
                           'Waiting for others...',
-                          style: TextStyle(fontSize: 14, color: Colors.white54),
+                          style: TextStyle(fontSize: 14, color: Colors.white54, fontStyle: FontStyle.italic),
                         ),
                       ],
                     ),
                   ),
-                  
-                  const SizedBox(height: 24),
-                  if (_gameConfig != null)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      width: double.infinity,
-                      constraints: const BoxConstraints(maxWidth: 400),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white12),
-                      ),
-                      child: Column(
-                        children: [
-                          const Text('Game Configuration', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 12),
-                          _buildConfigRow('Rounds', '${_gameConfig!['config']['rounds']}'),
-                          _buildConfigRow('Sets', '${(_gameConfig!['config']['sets'] as List).join(', ')}'),
-                          _buildConfigRow('Secret Only', '${_gameConfig!['config']['secretOnly'] ? 'Yes' : 'No'}'),
-                          if (_gameConfig!['config']['rarities'] != null)
-                             _buildConfigRow('Rarities', '${(_gameConfig!['config']['rarities'] as List).length} selected'),
-                        ],
-                      ),
-                    ),
-
-                  const SizedBox(height: 24),
-                  if (_playerList.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      width: double.infinity,
-                      constraints: const BoxConstraints(maxWidth: 400),
-                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                           const Center(child: Text('Connected Players', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold))),
-                           const SizedBox(height: 12),
-                           Wrap(
-                             spacing: 8,
-                             runSpacing: 8,
-                             alignment: WrapAlignment.center,
-                             children: _playerList.map((player) => Chip(
-                               avatar: CircleAvatar(
-                                 backgroundColor: Colors.indigo.shade900,
-                                 child: Text(player.substring(0, 1).toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10)),
-                               ),
-                               label: Text(
-                                   (player == guestId || player == authToken || player == _guestName || player == _userName) 
-                                     ? 'You ($player)' 
-                                     : player,
-                                   style: const TextStyle(fontSize: 12)
-                               ),
-                               backgroundColor: Colors.white.withOpacity(0.9),
-                             )).toList(),
-                           )
-                        ],
-                      ),
-                    ),
 
                   const SizedBox(height: 48),
 
