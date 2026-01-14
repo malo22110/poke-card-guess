@@ -147,9 +147,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               setState(() => _selectedGameModeId = mode['id']);
               _fetchLeaderboard(mode['id']);
             },
-            backgroundColor: isSelected ? Colors.amber : Colors.white.withOpacity(0.1),
+            backgroundColor: isSelected ? Colors.amber : Colors.white.withOpacity(0.9),
             labelStyle: TextStyle(
-              color: isSelected ? Colors.black : Colors.white,
+              color: Colors.black, // Dark text for readability on both Amber and White
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
             avatar: mode['isOfficial'] == true 
