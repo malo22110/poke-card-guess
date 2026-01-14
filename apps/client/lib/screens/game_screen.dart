@@ -609,8 +609,6 @@ class _GameScreenState extends State<GameScreen> {
                       isCorrect: _isCorrect,
                       revealedName: _revealedName,
                       revealedSet: _revealedSet,
-                      onNextCard: nextCard,
-                      showNextButton: _currentRound < _totalRounds,
                     ),
                 ],
               ),

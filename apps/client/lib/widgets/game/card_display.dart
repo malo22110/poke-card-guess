@@ -5,7 +5,6 @@ class CardDisplay extends StatefulWidget {
   final bool showFullCard;
   final String? croppedImage;
   final String? fullImageUrl;
-
   const CardDisplay({
     super.key,
     required this.showFullCard,
@@ -55,10 +54,10 @@ class _CardDisplayState extends State<CardDisplay> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     return Hero(
       tag: 'card_display',
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 400),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+      child: Center(
+        child: SizedBox(
+          height: 500,
+          width: 350, // Fixed width based on 0.7 aspect ratio
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
@@ -70,18 +69,22 @@ class _CardDisplayState extends State<CardDisplay> with SingleTickerProviderStat
                 ),
               ],
             ),
-            child: Stack(
-              children: [
-                // Always show cropped card as base
-                _buildCroppedCard(),
-                
-                // Fade in full card on top
-                if (widget.showFullCard)
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: _buildFullCard(),
-                  ),
-              ],
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Always show cropped card as base
+                  _buildCroppedCard(),
+                  
+                  // Fade in full card on top
+                  if (widget.showFullCard)
+                    FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: _buildFullCard(),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -93,7 +96,6 @@ class _CardDisplayState extends State<CardDisplay> with SingleTickerProviderStat
     if (widget.croppedImage == null) return const SizedBox.shrink();
 
     return Container(
-      height: 500,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -170,43 +172,37 @@ class _CardDisplayState extends State<CardDisplay> with SingleTickerProviderStat
     if (widget.fullImageUrl == null) return const SizedBox.shrink();
     
     return Container(
-      height: 500, // Fixed height to prevent layout shift
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white, // Keep white background to ensure no bleed through
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Center(
-        child: AspectRatio(
-          aspectRatio: 0.7, // Standard Pokemon card aspect ratio
-          child: Image.network(
-            widget.fullImageUrl!,
-            fit: BoxFit.contain,
-            gaplessPlayback: true,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                color: Colors.grey[200],
-                child: Center(
-                  child: CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded /
-                            loadingProgress.expectedTotalBytes!
-                        : null,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF3B4CCA)),
-                  ),
-                ),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: Colors.grey[300],
-                child: const Center(
-                  child: Icon(Icons.error, size: 50),
-                ),
-              );
-            },
-          ),
-        ),
+      child: Image.network(
+        widget.fullImageUrl!,
+        fit: BoxFit.cover, // Cover entire container which is now ratio-locked
+        gaplessPlayback: true,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: Colors.grey[200],
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF3B4CCA)),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: const Center(
+              child: Icon(Icons.error, size: 50),
+            ),
+          );
+        },
       ),
     );
   }
