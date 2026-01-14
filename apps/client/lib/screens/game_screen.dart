@@ -40,6 +40,7 @@ class _GameScreenState extends State<GameScreen> {
   final _socketService = GameSocketService();
   StreamSubscription? _roundSub;
   StreamSubscription? _guessResultSub;
+  StreamSubscription? _scoreboardSub;
   
   // Timer variables
   Timer? _countdownTimer;
@@ -48,6 +49,7 @@ class _GameScreenState extends State<GameScreen> {
   
   // Scoreboard and waiting state
   Map<String, int> _scores = {};
+  Map<String, String> _playerStatuses = {};
   bool _isWaitingForRoundEnd = false;
   
   int _currentRound = 0;
@@ -89,6 +91,7 @@ class _GameScreenState extends State<GameScreen> {
     _guessController.dispose();
     _roundSub?.cancel();
     _guessResultSub?.cancel();
+    _scoreboardSub?.cancel();
     _countdownTimer?.cancel();
     // Remove specific listeners attached manually to avoid duplicates if we come back
     _socketService.socket.off('roundFinished');
@@ -204,6 +207,22 @@ class _GameScreenState extends State<GameScreen> {
          _showResult(data['result'] ?? {});
        }
     });
+
+    _scoreboardSub = _socketService.scoreboardUpdateStream.listen((data) {
+       if (mounted) {
+         setState(() {
+           if (data['scores'] != null) {
+              _scores = Map<String, int>.from(data['scores']);
+              if (_guestId != null && _scores.containsKey(_guestId)) {
+                score = _scores[_guestId]!;
+              }
+           }
+           if (data['playerStatuses'] != null) {
+              _playerStatuses = Map<String, String>.from(data['playerStatuses']);
+           }
+         });
+       }
+    });
   }
 
    void _showResult(Map<String, dynamic> result) {
@@ -241,6 +260,10 @@ class _GameScreenState extends State<GameScreen> {
        } else if (_isCorrect == true) {
          // Fallback: increment local score if server didn't send scores
          score++;
+       }
+       
+       if (result['playerStatuses'] != null) {
+         _playerStatuses = Map<String, String>.from(result['playerStatuses']);
        }
     });
   }
@@ -316,6 +339,10 @@ class _GameScreenState extends State<GameScreen> {
       if (data['scores'] != null) {
         _scores = Map<String, int>.from(data['scores']);
       }
+
+      if (data['playerStatuses'] != null) {
+        _playerStatuses = Map<String, String>.from(data['playerStatuses']);
+      }
       
       // Extract round info
       _currentRound = data['round'] ?? 0;
@@ -336,7 +363,7 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _isWaitingForRoundEnd = true;
     });
-    _socketService.socket.emit('giveUp', {'lobbyId': _lobbyId, 'userId': _guestId ?? 'guest'});
+    _socketService.giveUp(_lobbyId!, _guestId ?? 'guest');
   }
 
   void nextCard() {
@@ -700,11 +727,12 @@ class _GameScreenState extends State<GameScreen> {
             // Scoreboard (right side)
             if (_scores.isNotEmpty) ...[
               const SizedBox(width: 20),
-              SizedBox(
-                width: 250,
+              Expanded(
+                flex: 1,
                 child: Scoreboard(
                   scores: _scores,
                   currentUserId: _guestId,
+                  playerStatuses: _playerStatuses,
                 ),
               ),
             ],

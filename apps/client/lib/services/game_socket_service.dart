@@ -11,12 +11,14 @@ class GameSocketService {
   final _gameStartedController = StreamController<Map<String, dynamic>>.broadcast();
   final _roundUpdateController = StreamController<Map<String, dynamic>>.broadcast();
   final _guessResultController = StreamController<Map<String, dynamic>>.broadcast();
+  final _scoreboardUpdateController = StreamController<Map<String, dynamic>>.broadcast();
 
   Stream<int> get playerCountStream => _playerCountController.stream;
   Stream<Map<String, dynamic>> get gameStatusStream => _gameStatusController.stream;
   Stream<Map<String, dynamic>> get gameStartedStream => _gameStartedController.stream;
   Stream<Map<String, dynamic>> get roundUpdateStream => _roundUpdateController.stream;
   Stream<Map<String, dynamic>> get guessResultStream => _guessResultController.stream;
+  Stream<Map<String, dynamic>> get scoreboardUpdateStream => _scoreboardUpdateController.stream;
 
   factory GameSocketService() {
     return _instance;
@@ -59,6 +61,10 @@ class GameSocketService {
       _guessResultController.add(Map<String, dynamic>.from(data));
     });
 
+    socket.on('scoreboardUpdate', (data) {
+      _scoreboardUpdateController.add(Map<String, dynamic>.from(data));
+    });
+
     socket.onDisconnect((_) => print('Disconnected'));
   }
 
@@ -82,5 +88,9 @@ class GameSocketService {
   
   void makeGuess(String lobbyId, String userId, String guess) {
     socket.emit('makeGuess', {'lobbyId': lobbyId, 'userId': userId, 'guess': guess});
+  }
+
+  void giveUp(String lobbyId, String userId) {
+    socket.emit('giveUp', {'lobbyId': lobbyId, 'userId': userId});
   }
 }

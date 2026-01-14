@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class Scoreboard extends StatelessWidget {
   final Map<String, int> scores;
   final String? currentUserId;
+  final Map<String, String>? playerStatuses;
 
   const Scoreboard({
     super.key,
     required this.scores,
     this.currentUserId,
+    this.playerStatuses,
   });
 
   @override
@@ -77,7 +79,7 @@ class Scoreboard extends StatelessWidget {
                     child: Center(
                       child: Text(
                         '${index + 1}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -86,32 +88,46 @@ class Scoreboard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Player ID
+                  // Player Details (Two Rows)
                   Expanded(
-                    child: Text(
-                      playerId.length > 8 
-                          ? '${playerId.substring(0, 8)}...'
-                          : playerId,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: isCurrentUser ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                  ),
-                  // Score
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '$score',
-                      style: TextStyle(
-                        color: Colors.amber,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Name
+                        Text(
+                          playerId,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: isCurrentUser ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 14,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        // Score & Status
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '$score pts',
+                                style: const TextStyle(
+                                  color: Colors.amber,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            _buildStatusIcon(playerStatuses?[playerId]),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -134,5 +150,14 @@ class Scoreboard extends StatelessWidget {
       default:
         return Colors.grey[600]!;
     }
+  }
+
+  Widget _buildStatusIcon(String? status) {
+    if (status == 'guessed') {
+      return const Icon(Icons.check_circle, color: Colors.greenAccent, size: 24);
+    } else if (status == 'given_up') {
+      return const Icon(Icons.cancel, color: Colors.redAccent, size: 24);
+    }
+    return const SizedBox(width: 24);
   }
 }

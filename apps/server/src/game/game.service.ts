@@ -133,6 +133,19 @@ export class GameService {
     };
   }
 
+  private getRoundPlayerStatuses(lobby: GameLobby): Record<string, string> {
+    const statuses: Record<string, string> = {};
+    // Default to 'playing'
+    lobby.players.forEach((p) => (statuses[p] = 'playing'));
+
+    // Update from history
+    const history = lobby.history.get(lobby.currentRound) || [];
+    history.forEach((res) => {
+      statuses[res.userId] = res.correct ? 'guessed' : 'given_up';
+    });
+    return statuses;
+  }
+
   // --- Game Logic ---
 
   startGame(lobbyId: string, userId: string) {
@@ -181,6 +194,7 @@ export class GameService {
       croppedImage: `data:image/png;base64,${card.croppedImage}`,
       scores: Object.fromEntries(lobby.scores),
       status: lobby.status,
+      playerStatuses: this.getRoundPlayerStatuses(lobby),
     };
   }
 
@@ -260,6 +274,7 @@ export class GameService {
         scores: Object.fromEntries(lobby.scores), // Include current scores
         currentRound: lobby.currentRound,
         totalRounds: lobby.config.rounds,
+        playerStatuses: this.getRoundPlayerStatuses(lobby),
       };
 
       if (allFinished) {
@@ -314,6 +329,7 @@ export class GameService {
       fullImageUrl: currentCard.fullImageUrl,
       set: currentCard.set,
       roundFinished: allFinished,
+      playerStatuses: this.getRoundPlayerStatuses(lobby),
     };
 
     if (allFinished) {

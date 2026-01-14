@@ -122,6 +122,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         data.guess,
       );
       client.emit('guessResult', result);
+      this.server.to(data.lobbyId).emit('scoreboardUpdate', {
+        scores: (result as any).scores,
+        playerStatuses: (result as any).playerStatuses,
+      });
 
       if ((result as any).correct && (result as any).roundFinished) {
         this.gameService.clearRoundTimer(data.lobbyId);
@@ -148,6 +152,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // Emit individual result so the user sees the card
       client.emit('giveUpResult', result);
+      this.server.to(data.lobbyId).emit('scoreboardUpdate', {
+        scores: (result as any).scores,
+        playerStatuses: (result as any).playerStatuses,
+      });
 
       if ((result as any).roundFinished) {
         this.gameService.clearRoundTimer(data.lobbyId);
