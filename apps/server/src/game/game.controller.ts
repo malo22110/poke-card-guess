@@ -25,7 +25,7 @@ export class GameController {
 
   @Post('create')
   @UseGuards(OptionalJwtAuthGuard)
-  createLobby(
+  async createLobby(
     @Body()
     body: {
       rounds?: number;
@@ -39,7 +39,7 @@ export class GameController {
       ? req.user.id || req.user.userId
       : 'guest-host-' + Math.random().toString(36).substr(2, 9);
 
-    return this.gameService.createLobby(userId, {
+    return await this.gameService.createLobby(userId, {
       rounds: body.rounds,
       sets: body.sets,
       secretOnly: body.secretOnly,
@@ -69,7 +69,7 @@ export class GameController {
 
   @Post('start')
   @UseGuards(OptionalJwtAuthGuard)
-  async startGame(
+  startGame(
     @Body() body: { lobbyId: string; guestId?: string },
     @Req() req: any,
   ) {

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../services/game_socket_service.dart';
 
 class WaitingRoomScreen extends StatefulWidget {
@@ -21,8 +23,17 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   StreamSubscription? _statusSub;
 
   int _playerCount = 1;
+  List<String> _playerList = [];
   bool _isLoading = false;
   String? _error;
+  Map<String, dynamic>? _gameConfig;
+
+  @override
+  void initState() {
+    super.initState();
+    // Socket init moved to didChangeDependencies or we can call fetch here if we had lobbyId
+    // But lobbyId is init in didChangeDependencies.
+  }
 
   @override
   void didChangeDependencies() {
@@ -35,6 +46,28 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
       guestId = args['guestId']; 
 
       _initSocket();
+      _fetchLobbyDetails();
+    }
+  }
+
+  Future<void> _fetchLobbyDetails() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/game/$lobbyId/status'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            _gameConfig = data;
+            if (data['playerList'] != null) {
+              _playerList = List<String>.from(data['playerList']);
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching lobby details: $e');
     }
   }
   
@@ -52,7 +85,11 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
     _socketService.joinGame(lobbyId, guestId ?? 'unknown');
 
     _playerCountSub = _socketService.playerCountStream.listen((count) {
-      if (mounted) setState(() => _playerCount = count);
+      if (mounted) {
+        setState(() => _playerCount = count);
+        // optimal: re-fetch details to get updated names
+        _fetchLobbyDetails();
+      }
     });
 
     bool navigationTriggered = false;
@@ -144,6 +181,66 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                     ),
                   ),
                   
+                  const SizedBox(height: 24),
+                  if (_gameConfig != null)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      width: double.infinity,
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text('Game Configuration', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 12),
+                          _buildConfigRow('Rounds', '${_gameConfig!['config']['rounds']}'),
+                          _buildConfigRow('Sets', '${(_gameConfig!['config']['sets'] as List).join(', ')}'),
+                          _buildConfigRow('Secret Only', '${_gameConfig!['config']['secretOnly'] ? 'Yes' : 'No'}'),
+                          if (_gameConfig!['config']['rarities'] != null)
+                             _buildConfigRow('Rarities', '${(_gameConfig!['config']['rarities'] as List).length} selected'),
+                        ],
+                      ),
+                    ),
+
+                  const SizedBox(height: 24),
+                  if (_playerList.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      width: double.infinity,
+                      constraints: const BoxConstraints(maxWidth: 400),
+                       decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                           const Center(child: Text('Connected Players', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold))),
+                           const SizedBox(height: 12),
+                           Wrap(
+                             spacing: 8,
+                             runSpacing: 8,
+                             alignment: WrapAlignment.center,
+                             children: _playerList.map((player) => Chip(
+                               avatar: CircleAvatar(
+                                 backgroundColor: Colors.indigo.shade900,
+                                 child: Text(player.substring(0, 1).toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10)),
+                               ),
+                               label: Text(
+                                   player == guestId || player == authToken  ? 'You ($player)' : player, // Simple check
+                                   style: const TextStyle(fontSize: 12)
+                               ),
+                               backgroundColor: Colors.white.withOpacity(0.9),
+                             )).toList(),
+                           )
+                        ],
+                      ),
+                    ),
+
                   const SizedBox(height: 48),
 
                   if (_error != null)
@@ -192,6 +289,20 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+
+  Widget _buildConfigRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white70)),
+          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }

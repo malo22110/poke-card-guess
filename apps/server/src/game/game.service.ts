@@ -55,7 +55,10 @@ export class GameService {
 
   // --- Lobby Management ---
 
-  createLobby(hostId: string, config: Partial<GameConfig> = {}): GameLobby {
+  async createLobby(
+    hostId: string,
+    config: Partial<GameConfig> = {},
+  ): Promise<GameLobby> {
     const lobbyId = uuidv4().substring(0, 8).toUpperCase(); // Short ID for easier joining
     const newLobby: GameLobby = {
       id: lobbyId,
@@ -74,6 +77,9 @@ export class GameService {
       scores: new Map([[hostId, 0]]), // Initialize host score
       roundStartTime: 0,
     };
+
+    // Pre-load cards during creation
+    newLobby.cards = await this.fetchGameCards(newLobby.config);
 
     this.lobbies.set(lobbyId, newLobby);
     return newLobby;
@@ -110,6 +116,7 @@ export class GameService {
     return {
       status: lobby.status,
       players: lobby.players.length,
+      playerList: lobby.players,
       hostId: lobby.hostId,
       config: lobby.config,
       scores: Object.fromEntries(lobby.scores), // Convert Map to object
@@ -118,7 +125,7 @@ export class GameService {
 
   // --- Game Logic ---
 
-  async startGame(lobbyId: string, userId: string) {
+  startGame(lobbyId: string, userId: string) {
     const lobby = this.lobbies.get(lobbyId);
     if (!lobby)
       throw new HttpException('Lobby not found', HttpStatus.NOT_FOUND);
@@ -131,7 +138,7 @@ export class GameService {
       return { status: 'WAITING', message: 'Waiting for host to start...' };
     }
 
-    lobby.cards = await this.fetchGameCards(lobby.config);
+    // Cards are already pre-loaded during creation
     lobby.status = 'PLAYING';
     lobby.currentRound = 1;
     lobby.roundStartTime = Date.now();

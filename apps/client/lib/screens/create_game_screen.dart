@@ -14,7 +14,7 @@ class CreateGameScreen extends StatefulWidget {
 class _CreateGameScreenState extends State<CreateGameScreen> {
   double _rounds = 10;
   bool _secretOnly = true;
-  String _selectedSetId = '151'; // Default
+  String? _selectedSetId; // No default, user must select
   List<dynamic> _availableSets = [];
   List<String> _availableRarities = [];
   List<String> _selectedRarities = [];
@@ -164,6 +164,8 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
   }
 
   Future<void> _createGame() async {
+    if (_selectedSetId == null) return;
+
     setState(() {
       _isCreating = true;
       _error = null;
@@ -178,7 +180,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
         },
         body: jsonEncode({
           'rounds': _rounds.toInt(),
-          'sets': [_selectedSetId],
+          'sets': [_selectedSetId!],
           'secretOnly': _secretOnly,
           'rarities': _secretOnly && _selectedRarities.isNotEmpty 
               ? _selectedRarities 
@@ -457,13 +459,16 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (set['logo'] != null && set['logo'].toString().endsWith('png'))
+                if (set['logo'] != null)
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Image.network(
-                        set['logo'] + '.png', // Some APIs might need extension?
+                        set['logo'].toString().endsWith('.png') 
+                            ? set['logo'] 
+                            : '${set['logo']}.png',
                         errorBuilder: (c, o, s) => const Icon(Icons.image, color: Colors.white24),
+                        fit: BoxFit.contain,
                       )
                     ),
                   )
@@ -500,17 +505,31 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
         boxShadow: const [BoxShadow(blurRadius: 10, color: Colors.black45)],
       ),
       child: SafeArea(
-        child: ElevatedButton(
-          onPressed: _isCreating ? null : _createGame,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.amber,
-            foregroundColor: Colors.black,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: _isCreating
-              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('START GAME', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            ElevatedButton(
+              onPressed: (_isCreating || _selectedSetId == null) ? null : _createGame,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+                foregroundColor: Colors.black,
+                disabledBackgroundColor: Colors.grey.withOpacity(0.3),
+                disabledForegroundColor: Colors.white.withOpacity(0.5),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: _isCreating
+                  ? const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)),
+                        SizedBox(width: 12),
+                        Text('Fetching random cards...', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    )
+                  : const Text('CREATE GAME', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+            ),
+          ],
         ),
       ),
     );
