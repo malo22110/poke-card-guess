@@ -31,6 +31,7 @@ export class GameController {
       secretOnly?: boolean;
       rarities?: string[];
       guestName?: string;
+      gameModeId?: string;
     },
     @Req() req: any,
   ) {
@@ -46,7 +47,8 @@ export class GameController {
         secretOnly: body.secretOnly,
         rarities: body.rarities,
       },
-      body.guestName,
+      req.user?.name || body.guestName,
+      body.gameModeId,
     );
   }
 
@@ -68,7 +70,12 @@ export class GameController {
     // But I haven't injected UsersService here yet.
 
     // Call service to join
-    const lobby = this.gameService.joinLobby(userId, body.lobbyId, userName);
+    // Fix argument order: lobbyId, userId, userName
+    const lobby = await this.gameService.joinLobby(
+      body.lobbyId,
+      userId,
+      userName || 'Guest',
+    );
 
     // Return lobby info AND the userId (guestId) if it was generated/used
     return {

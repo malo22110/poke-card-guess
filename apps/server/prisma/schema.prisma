@@ -25,6 +25,10 @@ model User {
   // Stats
   totalScore    Int @default(0)
   totalAttempts Int @default(0)
+  
+  createdGameModes GameMode[]
+  upvotes          GameModeUpvote[]
+  gameSessions     GameSession[]
 }
 
 model Game {
@@ -36,4 +40,45 @@ model Game {
   cardSet   String
   correct   Boolean
   playedAt  DateTime @default(now())
+}
+
+model GameMode {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  creatorId   String?
+  creator     User?    @relation(fields: [creatorId], references: [id])
+  
+  // Config stored as JSON string
+  // { "rounds": 10, "sets": ["151"], "secretOnly": true, "rarities": ["Rare"] }
+  configJson  String
+  
+  isOfficial  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  
+  upvotes     GameModeUpvote[]
+  sessions    GameSession[]
+}
+
+model GameModeUpvote {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  gameModeId String
+  gameMode   GameMode @relation(fields: [gameModeId], references: [id])
+  
+  @@unique([userId, gameModeId])
+}
+
+model GameSession {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  gameModeId  String?
+  gameMode    GameMode? @relation(fields: [gameModeId], references: [id])
+  
+  score       Int
+  maxScore    Int      // Maximum possible score for this session
+  rounds      Int
+  playedAt    DateTime @default(now())
 }

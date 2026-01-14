@@ -323,6 +323,18 @@ class _LobbyScreenState extends State<LobbyScreen> {
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                         : const Text('Create New Game', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
+
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.of(context).pushNamed('/leaderboard', arguments: {'authToken': widget.authToken}),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(color: Colors.amber.withOpacity(0.5)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      ),
+                      icon: const Icon(Icons.emoji_events, color: Colors.amber),
+                      label: const Text('Leaderboards', style: TextStyle(color: Colors.white, fontSize: 16)),
+                    ),
                     
                     const SizedBox(height: 32),
                     Row(

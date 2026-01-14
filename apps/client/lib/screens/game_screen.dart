@@ -50,6 +50,7 @@ class _GameScreenState extends State<GameScreen> {
   // Scoreboard and waiting state
   Map<String, int> _scores = {};
   Map<String, String> _playerStatuses = {};
+  Map<String, String> _playerNames = {};
   bool _isWaitingForRoundEnd = false;
   
   int _currentRound = 0;
@@ -218,7 +219,16 @@ class _GameScreenState extends State<GameScreen> {
               }
            }
            if (data['playerStatuses'] != null) {
-              _playerStatuses = Map<String, String>.from(data['playerStatuses']);
+              if (data['playerStatuses'] is List) {
+                _playerStatuses = {};
+                for (var item in data['playerStatuses']) {
+                  final userId = item['userId'] as String;
+                  _playerNames[userId] = item['name']?.toString() ?? 'Player';
+                  _playerStatuses[userId] = (item['hasFinished'] == true) ? 'Finished' : 'Thinking';
+                }
+              } else {
+                _playerStatuses = Map<String, String>.from(data['playerStatuses']);
+              }
            }
          });
        }
@@ -263,7 +273,16 @@ class _GameScreenState extends State<GameScreen> {
        }
        
        if (result['playerStatuses'] != null) {
-         _playerStatuses = Map<String, String>.from(result['playerStatuses']);
+          if (result['playerStatuses'] is List) {
+            _playerStatuses = {};
+            for (var item in result['playerStatuses']) {
+              final userId = item['userId'] as String;
+              _playerNames[userId] = item['name']?.toString() ?? 'Player';
+              _playerStatuses[userId] = (item['hasFinished'] == true) ? 'Finished' : 'Thinking';
+            }
+          } else {
+            _playerStatuses = Map<String, String>.from(result['playerStatuses']);
+          }
        }
     });
   }
@@ -341,7 +360,17 @@ class _GameScreenState extends State<GameScreen> {
       }
 
       if (data['playerStatuses'] != null) {
-        _playerStatuses = Map<String, String>.from(data['playerStatuses']);
+        if (data['playerStatuses'] is List) {
+          _playerStatuses = {};
+          for (var item in data['playerStatuses']) {
+            final userId = item['userId'] as String;
+            _playerNames[userId] = item['name']?.toString() ?? 'Player';
+            // storing status string based on hasFinished boolean
+            _playerStatuses[userId] = (item['hasFinished'] == true) ? 'Finished' : 'Thinking';
+          }
+        } else {
+           _playerStatuses = Map<String, String>.from(data['playerStatuses']);
+        }
       }
       
       // Extract round info
@@ -733,6 +762,7 @@ class _GameScreenState extends State<GameScreen> {
                   scores: _scores,
                   currentUserId: _guestId,
                   playerStatuses: _playerStatuses,
+                  playerNames: _playerNames,
                 ),
               ),
             ],

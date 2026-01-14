@@ -30,17 +30,21 @@ export interface GameLobby {
   cards: GameCard[];
   roundResults: Map<string, boolean>; // userId -> hasFinishedRound
   scores: Map<string, number>; // userId -> total score
+  gameModeId?: string;
   roundStartTime: number;
   history: Map<number, RoundResult[]>; // round number -> results
   timer?: any; // NodeJS.Timeout
 }
+
+// ... existing interfaces ...
 
 export interface GameCard {
   id: string;
   name: string;
   fullImageUrl: string;
   set: string;
-  croppedImage: string; // Base64
+  croppedImage: string;
+  commonCardImage?: string; // Add this if it was intended from previous context
 }
 
 export interface RoundResult {
@@ -53,12 +57,8 @@ export interface RoundResult {
 
 @Injectable()
 export class GameService {
-  private readonly tcgdex = new TCGdex('fr');
-
-  // In-memory storage for lobbies
-  private lobbies = new Map<string, GameLobby>();
-
-  // Cache for special rarities to avoid fetching on every game
+  private lobbies: Map<string, GameLobby> = new Map();
+  private tcgdex = new TCGdex('fr');
   private specialRaritiesCache: string[] | null = null;
 
   constructor(private prisma: PrismaService) {}
@@ -69,18 +69,42 @@ export class GameService {
     hostId: string,
     config: Partial<GameConfig> = {},
     hostName?: string,
+    gameModeId?: string,
   ): Promise<GameLobby> {
     const lobbyId = uuidv4().substring(0, 8).toUpperCase(); // Short ID for easier joining
+
+    let resolvedConfig = {
+      rounds: config.rounds || 10,
+      sets: config.sets || ['sv03.5'],
+      secretOnly: config.secretOnly === undefined ? true : config.secretOnly,
+      rarities: config.rarities,
+    };
+
+    if (gameModeId) {
+      try {
+        const gameMode = await this.prisma.gameMode.findUnique({
+          where: { id: gameModeId },
+        });
+        if (gameMode) {
+          const modeConfig = JSON.parse(gameMode.configJson);
+          resolvedConfig = {
+            rounds: modeConfig.rounds,
+            sets: modeConfig.sets,
+            secretOnly: modeConfig.secretOnly,
+            rarities: modeConfig.rarities,
+          };
+        }
+      } catch (e) {
+        console.error('Failed to load game mode config', e);
+      }
+    }
+
     const newLobby: GameLobby = {
       id: lobbyId,
       hostId,
       players: [hostId],
-      config: {
-        rounds: config.rounds || 10,
-        sets: config.sets || ['151'],
-        secretOnly: config.secretOnly || true,
-        rarities: config.rarities,
-      },
+      config: resolvedConfig,
+      gameModeId,
       status: 'WAITING',
       currentRound: 0,
       cards: [],
@@ -98,28 +122,32 @@ export class GameService {
     return newLobby;
   }
 
-  joinLobby(userId: string, lobbyId: string, userName?: string): GameLobby {
+  // --- Lobby Management ---
+
+  async joinLobby(
+    lobbyId: string,
+    userId: string,
+    userName: string,
+  ): Promise<GameLobby> {
     const lobby = this.lobbies.get(lobbyId);
     if (!lobby) {
       throw new HttpException('Lobby not found', HttpStatus.NOT_FOUND);
     }
+
     if (lobby.status !== 'WAITING') {
       throw new HttpException('Game already started', HttpStatus.BAD_REQUEST);
     }
+
     if (!lobby.players.includes(userId)) {
       lobby.players.push(userId);
-      lobby.scores.set(userId, 0); // Initialize score
-      lobby.playerNames.set(userId, userName || userId);
+      lobby.playerNames.set(userId, userName);
     }
+
     return lobby;
   }
 
-  getLobby(lobbyId: string): GameLobby {
-    const lobby = this.lobbies.get(lobbyId);
-    if (!lobby) {
-      throw new HttpException('Lobby not found', HttpStatus.NOT_FOUND);
-    }
-    return lobby;
+  getLobby(lobbyId: string): GameLobby | undefined {
+    return this.lobbies.get(lobbyId);
   }
 
   getLobbyStatus(lobbyId: string) {
@@ -129,54 +157,65 @@ export class GameService {
     }
     return {
       status: lobby.status,
-      players: lobby.players.length,
-      playerList: lobby.players.map((id) => lobby.playerNames.get(id) || id), // Return names
-      hostId: lobby.hostId,
+      players: lobby.players.map((id) => ({
+        id,
+        name: lobby.playerNames.get(id),
+      })),
       config: lobby.config,
-      scores: Object.fromEntries(lobby.scores), // Convert Map to object
     };
   }
 
-  private getRoundPlayerStatuses(lobby: GameLobby): Record<string, string> {
-    const statuses: Record<string, string> = {};
-    // Default to 'playing'
-    lobby.players.forEach((p) => (statuses[p] = 'playing'));
-
-    // Update from history
-    const history = lobby.history.get(lobby.currentRound) || [];
-    history.forEach((res) => {
-      statuses[res.userId] = res.correct ? 'guessed' : 'given_up';
-    });
-    return statuses;
+  getRoundPlayerStatuses(lobby: GameLobby) {
+    return lobby.players.map((id) => ({
+      userId: id,
+      name: lobby.playerNames.get(id),
+      hasFinished: lobby.roundResults.get(id) || false,
+      score: lobby.scores.get(id) || 0,
+    }));
   }
 
-  // --- Game Logic ---
-
-  startGame(lobbyId: string, userId: string) {
+  async startGame(lobbyId: string, userId: string): Promise<any> {
     const lobby = this.lobbies.get(lobbyId);
-    if (!lobby)
+    if (!lobby) {
       throw new HttpException('Lobby not found', HttpStatus.NOT_FOUND);
-
-    if (lobby.status === 'PLAYING') {
-      return this.getCurrentRoundData(lobby);
     }
 
     if (lobby.hostId !== userId) {
-      return { status: 'WAITING', message: 'Waiting for host to start...' };
+      throw new HttpException('Only host can start game', HttpStatus.FORBIDDEN);
     }
 
-    // Cards are already pre-loaded during creation
+    if (lobby.cards.length === 0) {
+      // Retry fetching if empty (should have been fetched at creation)
+      lobby.cards = await this.fetchGameCards(lobby.config);
+      if (lobby.cards.length === 0) {
+        throw new HttpException(
+          'No cards available for this configuration',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
     lobby.status = 'PLAYING';
     lobby.currentRound = 1;
     lobby.roundStartTime = Date.now();
-    lobby.roundResults.clear();
 
-    return this.getCurrentRoundData(lobby);
+    const card = lobby.cards[0];
+    return {
+      status: 'PLAYING',
+      round: 1,
+      totalRounds: lobby.config.rounds,
+      croppedImage: `data:image/png;base64,${card.croppedImage}`,
+      playerStatuses: this.getRoundPlayerStatuses(lobby),
+    };
   }
 
-  getCurrentRoundData(lobby: GameLobby) {
+  async getCurrentRoundData(lobby: GameLobby) {
     if (lobby.currentRound > lobby.cards.length) {
-      lobby.status = 'FINISHED';
+      if (lobby.status !== 'FINISHED') {
+        lobby.status = 'FINISHED';
+        await this.saveGameSession(lobby);
+      }
+
       const finalScores = Object.fromEntries(lobby.scores);
       console.log(`[Game Finished] Final scores:`, finalScores);
       return {
@@ -200,6 +239,39 @@ export class GameService {
       status: lobby.status,
       playerStatuses: this.getRoundPlayerStatuses(lobby),
     };
+  }
+
+  private async saveGameSession(lobby: GameLobby) {
+    // Only save session for users who are logged in (not guests)
+    // And if there is a gameModeId? Or save all sessions but link mode if valid?
+    // User requested leaderboard for game modes.
+
+    // Calculate max possible score for this lobby config
+    // 30,000 points per round * num rounds
+    const maxScore = 30000 * (lobby.config.rounds || 0);
+
+    for (const userId of lobby.players) {
+      if (userId.startsWith('guest')) continue;
+
+      const score = lobby.scores.get(userId) || 0;
+
+      try {
+        await this.prisma.gameSession.create({
+          data: {
+            userId,
+            gameModeId: lobby.gameModeId,
+            score,
+            maxScore,
+            rounds: lobby.config.rounds,
+          },
+        });
+        console.log(
+          `Saved session for user ${userId} in mode ${lobby.gameModeId}`,
+        );
+      } catch (e) {
+        console.error('Failed to save game session', e);
+      }
+    }
   }
 
   async makeGuess(lobbyId: string, userId: string, guess: string) {

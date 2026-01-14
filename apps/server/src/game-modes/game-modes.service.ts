@@ -1,0 +1,211 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma.service';
+import { GameMode, GameModeUpvote, Prisma } from '@prisma/client';
+
+@Injectable()
+export class GameModesService {
+  constructor(private prisma: PrismaService) {
+    this.seedOfficialModes();
+  }
+
+  async seedOfficialModes() {
+    const classicName = 'The Classic';
+    const classicConfig = {
+      rounds: 10,
+      sets: ['sv03.5'],
+      secretOnly: true,
+      rarities: [
+        'Chromatique ultra rare',
+        'Deux Chromatiques',
+        'Dresseur Full Art',
+        'HIGH-TECG rare',
+        'Holo Rare V',
+        'Holo Rare VMAX',
+        'Holo Rare VSTAR',
+        'Hyper rare',
+        'Illustration rare',
+        'Illustration spéciale rare',
+        'LÉGENDE',
+        'Magnifique',
+        'Magnifique rare',
+        'Méga Hyper Rare',
+        'Radieux Rare',
+        'Rare Holo LV.X',
+        'Rare Noir Blanc',
+        'Rare Prime',
+        'Shiny rare',
+        'Shiny rare V',
+        'Shiny rare VMAX',
+        'Ultra Rare',
+        'Un Chromatique',
+      ],
+    };
+
+    const classicModes = await this.prisma.gameMode.findMany({
+      where: { name: classicName, isOfficial: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (classicModes.length > 0) {
+      const [keep, ...remove] = classicModes;
+      if (remove.length > 0) {
+        await this.prisma.gameMode.deleteMany({
+          where: { id: { in: remove.map((m) => m.id) } },
+        });
+        console.log(
+          `Removed ${remove.length} duplicate official modes: The Classic`,
+        );
+      }
+
+      await this.prisma.gameMode.update({
+        where: { id: keep.id },
+        data: {
+          configJson: JSON.stringify(classicConfig),
+          description: 'The original challenge. 151 cards, Secret Rares only.',
+        },
+      });
+      console.log('Updated official mode: The Classic');
+    } else {
+      await this.prisma.gameMode.create({
+        data: {
+          name: classicName,
+          description: 'The original challenge. 151 cards, Secret Rares only.',
+          configJson: JSON.stringify(classicConfig),
+          isOfficial: true,
+        },
+      });
+      console.log('Seeded official mode: The Classic');
+    }
+
+    const pioneersName = 'The Pioneers';
+    const pioneersConfig = {
+      rounds: 10,
+      sets: ['base1'],
+      secretOnly: false,
+      rarities: ['Rare'],
+    };
+
+    const pioneersModes = await this.prisma.gameMode.findMany({
+      where: { name: pioneersName, isOfficial: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (pioneersModes.length > 0) {
+      const [keep, ...remove] = pioneersModes;
+      if (remove.length > 0) {
+        await this.prisma.gameMode.deleteMany({
+          where: { id: { in: remove.map((m) => m.id) } },
+        });
+        console.log(
+          `Removed ${remove.length} duplicate official modes: The Pioneers`,
+        );
+      }
+
+      await this.prisma.gameMode.update({
+        where: { id: keep.id },
+        data: {
+          configJson: JSON.stringify(pioneersConfig),
+          description: 'Back to the roots. Base Set, Rares only.',
+        },
+      });
+      console.log('Updated official mode: The Pioneers');
+    } else {
+      await this.prisma.gameMode.create({
+        data: {
+          name: pioneersName,
+          description: 'Back to the roots. Base Set, Rares only.',
+          configJson: JSON.stringify(pioneersConfig),
+          isOfficial: true,
+        },
+      });
+      console.log('Seeded official mode: The Pioneers');
+    }
+  }
+
+  async findAll() {
+    return this.prisma.gameMode.findMany({
+      include: {
+        creator: {
+          select: { name: true },
+        },
+        _count: {
+          select: { upvotes: true },
+        },
+      },
+      orderBy: [{ isOfficial: 'desc' }, { upvotes: { _count: 'desc' } }],
+    });
+  }
+
+  async findOne(id: string) {
+    return this.prisma.gameMode.findUnique({
+      where: { id },
+      include: {
+        _count: { select: { upvotes: true } },
+      },
+    });
+  }
+
+  async create(data: {
+    name: string;
+    description?: string;
+    config: any;
+    creatorId: string;
+  }) {
+    return this.prisma.gameMode.create({
+      data: {
+        name: data.name,
+        description: data.description,
+        configJson: JSON.stringify(data.config),
+        creatorId: data.creatorId,
+        isOfficial: false,
+      },
+    });
+  }
+
+  async upvote(gameModeId: string, userId: string) {
+    // Check if already upvoted
+    const existing = await this.prisma.gameModeUpvote.findUnique({
+      where: {
+        userId_gameModeId: {
+          userId,
+          gameModeId,
+        },
+      },
+    });
+
+    if (existing) {
+      // Remove upvote (toggle)
+      return this.prisma.gameModeUpvote.delete({
+        where: { id: existing.id },
+      });
+    }
+
+    return this.prisma.gameModeUpvote.create({
+      data: {
+        userId,
+        gameModeId,
+      },
+    });
+  }
+
+  async getLeaderboard(gameModeId: string) {
+    // Group by user and find max score? Or sum?
+    // Leaderboard usually implies best single game score for "classic" logic.
+    // Or accumulative? "The user mentioned 'leaderboard for each game-modes'"
+    // Typically means top high scores.
+
+    // Prisma grouping or raw query might be needed for efficient ranking.
+    // For now, let's just get top 50 sessions.
+
+    return this.prisma.gameSession.findMany({
+      where: { gameModeId },
+      orderBy: { score: 'desc' },
+      take: 50,
+      include: {
+        user: {
+          select: { name: true, picture: true },
+        },
+      },
+    });
+  }
+}

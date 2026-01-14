@@ -11,13 +11,22 @@ class CreateGameScreen extends StatefulWidget {
   State<CreateGameScreen> createState() => _CreateGameScreenState();
 }
 
-class _CreateGameScreenState extends State<CreateGameScreen> {
+class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  
+  // Custom Config State
   double _rounds = 10;
   bool _secretOnly = true;
-  String? _selectedSetId; // No default, user must select
+  String? _selectedSetId;
   List<dynamic> _availableSets = [];
   List<String> _availableRarities = [];
   List<String> _selectedRarities = [];
+  
+  // Game Modes State
+  List<dynamic> _gameModes = [];
+  String? _selectedGameModeId;
+  bool _isLoadingGameModes = true;
+  
   bool _isLoadingSets = true;
   bool _isLoadingRarities = true;
   bool _isCreating = false;
@@ -48,31 +57,62 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _authToken = widget.authToken;
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (args != null) {
       _authToken = args['authToken'];
     }
-    // Fetch sets and rarities only if we haven't done so
+    // Fetch data only if we haven't done so
     if (_availableSets.isEmpty) {
       _fetchSets();
     }
     if (_availableRarities.isEmpty) {
       _fetchRarities();
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // Moved fetchSets to didChangeDependencies to ensure context/args are available
+    if (_gameModes.isEmpty) {
+      _fetchGameModes();
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchGameModes() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/gamemodes'),
+        headers: _authToken != null 
+          ? {'Authorization': 'Bearer $_authToken'}
+          : {},
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _gameModes = jsonDecode(response.body);
+          _isLoadingGameModes = false;
+        });
+      }
+    } catch (e) {
+      print('Failed to fetch game modes: $e');
+      setState(() => _isLoadingGameModes = false);
+    }
   }
 
   // Getter for filtered sets based on search query
@@ -94,8 +134,8 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
       // Note: Assuming optional auth guard allows access or we pass token if available
        final response = await http.get(
         Uri.parse('http://localhost:3000/game/sets'),
-        headers: widget.authToken != null 
-          ? {'Authorization': 'Bearer ${widget.authToken}'}
+        headers: _authToken != null 
+          ? {'Authorization': 'Bearer $_authToken'}
           : {},
       );
 
@@ -119,8 +159,8 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
     try {
       final response = await http.get(
         Uri.parse('http://localhost:3000/game/rarities'),
-        headers: widget.authToken != null 
-          ? {'Authorization': 'Bearer ${widget.authToken}'}
+        headers: _authToken != null 
+          ? {'Authorization': 'Bearer $_authToken'}
           : {},
       );
 
@@ -164,7 +204,18 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
   }
 
   Future<void> _createGame() async {
-    if (_selectedSetId == null) return;
+    // Validation based on active tab
+    if (_tabController.index == 0) {
+      if (_selectedGameModeId == null) {
+        setState(() => _error = 'Please select a game mode');
+        return;
+      }
+    } else {
+      if (_selectedSetId == null) {
+        setState(() => _error = 'Please select a card set');
+        return;
+      }
+    }
 
     setState(() {
       _isCreating = true;
@@ -172,20 +223,28 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
     });
 
     try {
+      final Map<String, dynamic> body = {};
+      
+      if (_tabController.index == 0) {
+        // Preset Mode
+        body['gameModeId'] = _selectedGameModeId;
+      } else {
+        // Custom Mode
+        body['rounds'] = _rounds.toInt();
+        body['sets'] = [_selectedSetId!];
+        body['secretOnly'] = _secretOnly;
+        if (_secretOnly && _selectedRarities.isNotEmpty) {
+          body['rarities'] = _selectedRarities;
+        }
+      }
+
       final response = await http.post(
         Uri.parse('http://localhost:3000/game/create'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${widget.authToken}',
+          'Authorization': 'Bearer $_authToken',
         },
-        body: jsonEncode({
-          'rounds': _rounds.toInt(),
-          'sets': [_selectedSetId!],
-          'secretOnly': _secretOnly,
-          'rarities': _secretOnly && _selectedRarities.isNotEmpty 
-              ? _selectedRarities 
-              : null,
-        }),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 201) {
@@ -220,6 +279,16 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
         title: const Text('Create New Game'),
         backgroundColor: const Color(0xFF1a237e),
         foregroundColor: Colors.white,
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.amber,
+          labelColor: Colors.amber,
+          unselectedLabelColor: Colors.white70,
+          tabs: const [
+            Tab(text: 'Game Modes'),
+            Tab(text: 'Custom'),
+          ],
+        ),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -229,60 +298,282 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
             end: Alignment.bottomRight,
           ),
         ),
-        child: (_isLoadingSets || _isLoadingRarities)
-            ? const Center(child: CircularProgressIndicator(color: Colors.white))
-            : _buildContent(),
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildPresetsTab(),
+            _buildCustomTab(),
+          ],
+        ),
+      ),
+      bottomNavigationBar: _buildBottomBar(),
+    );
+  }
+
+  Widget _buildPresetsTab() {
+    if (_isLoadingGameModes) {
+      return const Center(child: CircularProgressIndicator(color: Colors.white));
+    }
+
+    if (_gameModes.isEmpty) {
+      return const Center(child: Text('No game modes available', style: TextStyle(color: Colors.white)));
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _gameModes.length,
+      itemBuilder: (context, index) {
+        final mode = _gameModes[index];
+        final isSelected = _selectedGameModeId == mode['id'];
+        final isOfficial = mode['isOfficial'] == true;
+        
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedGameModeId = mode['id'];
+            });
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isSelected ? Colors.amber.withOpacity(0.2) : Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? Colors.amber : Colors.transparent,
+                width: 2,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    if (isOfficial) 
+                      const Padding(
+                        padding: EdgeInsets.only(right: 8.0),
+                        child: Icon(Icons.verified, color: Colors.blueAccent, size: 20),
+                      ),
+                    Text(
+                      mode['name'],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (!isOfficial)
+                      InkWell(
+                        onTap: () => _upvoteGameMode(mode['id']),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.thumb_up, size: 16, color: Colors.amber),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${mode['_count']?['upvotes'] ?? 0}',
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  mode['description'] ?? 'No description',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 12),
+                if (mode['creator'] != null)
+                  Text(
+                    'Created by ${mode['creator']['name']}',
+                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _upvoteGameMode(String id) async {
+    if (_authToken == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to upvote modes')),
+      );
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:3000/gamemodes/$id/upvote'),
+        headers: {'Authorization': 'Bearer $_authToken'},
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Toggle optimistic update or just refresh
+        _fetchGameModes(); 
+      }
+    } catch (e) {
+      print('Error upvoting: $e');
+    }
+  }
+
+  Widget _buildCustomTab() {
+    if (_isLoadingSets || _isLoadingRarities) {
+      return const Center(child: CircularProgressIndicator(color: Colors.white));
+    }
+    
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Text(_error!, style: const TextStyle(color: Colors.redAccent)),
+            ),
+          
+          // Configuration Section
+          _buildSectionTitle('Game Settings'),
+          const SizedBox(height: 16),
+          _buildConfigCard(),
+          const SizedBox(height: 32),
+
+          // Set Selection Section
+          _buildSectionTitle('Select Card Set'),
+          const SizedBox(height: 16),
+          _buildSearchInput(),
+          const SizedBox(height: 16),
+          _buildSetsGrid(),
+          const SizedBox(height: 32),
+
+
+          // Rarities Selection Section
+          _buildSectionTitle('Select Rarities'),
+          const SizedBox(height: 8),
+          Text(
+            '${_selectedRarities.length} rarities selected',
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          const SizedBox(height: 16),
+          _buildRaritiesSection(),
+          const SizedBox(height: 32),
+
+          // Save Button
+          if (_authToken != null && _selectedSetId != null)
+            Center(
+              child: OutlinedButton.icon(
+                onPressed: _showSavePresetDialog,
+                icon: const Icon(Icons.save_alt),
+                label: const Text('Save as Community Mode'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.amber,
+                  side: const BorderSide(color: Colors.amber),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+              ),
+            ),
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }
 
-  Widget _buildContent() {
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-                  ),
-                
-                // Configuration Section
-                _buildSectionTitle('Game Settings'),
-                const SizedBox(height: 16),
-                _buildConfigCard(),
-                const SizedBox(height: 32),
+  Future<void> _showSavePresetDialog() async {
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
 
-                // Set Selection Section
-                _buildSectionTitle('Select Card Set'),
-                const SizedBox(height: 16),
-                _buildSearchInput(),
-                const SizedBox(height: 16),
-                _buildSetsGrid(),
-                const SizedBox(height: 32),
-
-                // Rarities Selection Section (only show if secretOnly is enabled)
-                if (_secretOnly) ...[
-                  _buildSectionTitle('Select Rarities'),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${_selectedRarities.length} rarities selected',
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildRaritiesSection(),
-                ],
-              ],
-            ),
+    return showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Save Game Mode'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Mode Name',
+                  hintText: 'e.g., My Awesome Challenge',
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  hintText: 'Briefly describe rules...',
+                ),
+                maxLines: 2,
+              ),
+            ],
           ),
-        ),
-        _buildBottomBar(),
-      ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _saveCustomMode(nameController.text, descriptionController.text);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
     );
+  }
+
+  Future<void> _saveCustomMode(String name, String description) async {
+    if (name.isEmpty) return;
+
+    try {
+      final config = {
+        'rounds': _rounds.toInt(),
+        'sets': [_selectedSetId!],
+        'secretOnly': _secretOnly,
+        if (_secretOnly && _selectedRarities.isNotEmpty)
+          'rarities': _selectedRarities,
+      };
+
+      final response = await http.post(
+        Uri.parse('http://localhost:3000/gamemodes'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+        },
+        body: jsonEncode({
+          'name': name,
+          'description': description,
+          'config': config,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Game mode saved successfully!')),
+        );
+        _fetchGameModes(); // Refresh list
+        _tabController.animateTo(0); // Switch to Presets tab
+      } else {
+        throw Exception('Failed to save mode');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving mode: $e')),
+      );
+    }
   }
 
   Widget _buildSectionTitle(String title) {
@@ -328,29 +619,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
             onChanged: (value) => setState(() => _rounds = value),
           ),
           const Divider(color: Colors.white24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.visibility_off, color: Colors.white70),
-                  const SizedBox(width: 12),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Secret Cards Only', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      Text('Hide card details', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                    ],
-                  ),
-                ],
-              ),
-              Switch(
-                value: _secretOnly,
-                onChanged: (value) => setState(() => _secretOnly = value),
-                activeColor: Colors.amber,
-              ),
-            ],
-          ),
+
         ],
       ),
     );
@@ -512,7 +781,14 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             ElevatedButton(
-              onPressed: (_isCreating || _selectedSetId == null) ? null : _createGame,
+              onPressed: () {
+                if (_isCreating) return null;
+                if (_tabController.index == 0) {
+                   return _selectedGameModeId != null ? _createGame : null;
+                } else {
+                   return _selectedSetId != null ? _createGame : null;
+                }
+              }(),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.amber,
                 foregroundColor: Colors.black,

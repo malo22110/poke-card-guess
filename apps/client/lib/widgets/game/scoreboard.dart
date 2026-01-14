@@ -4,12 +4,14 @@ class Scoreboard extends StatelessWidget {
   final Map<String, int> scores;
   final String? currentUserId;
   final Map<String, String>? playerStatuses;
+  final Map<String, String>? playerNames;
 
   const Scoreboard({
     super.key,
     required this.scores,
     this.currentUserId,
     this.playerStatuses,
+    this.playerNames,
   });
 
   @override
@@ -95,7 +97,7 @@ class Scoreboard extends StatelessWidget {
                       children: [
                         // Name
                         Text(
-                          playerId,
+                          playerNames?[playerId] ?? playerId,
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: isCurrentUser ? FontWeight.bold : FontWeight.normal,

@@ -47,7 +47,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // Notify room of new player count
     this.server.to(lobbyId).emit('playerUpdate', {
-      count: status.players,
+      count: status.players.length,
     });
   }
 
@@ -67,10 +67,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private scheduleNextRound(lobbyId: string) {
-    setTimeout(() => {
-      const nextRoundData = this.gameService.getCurrentRoundData(
-        this.gameService.getLobby(lobbyId),
-      );
+    setTimeout(async () => {
+      const lobby = this.gameService.getLobby(lobbyId); // Fix: get lobby properly
+      if (!lobby) return; // Fix: check for undefined
+
+      const nextRoundData = await this.gameService.getCurrentRoundData(lobby); // Fix: await promise
 
       if (nextRoundData.status === 'FINISHED') {
         this.server.to(lobbyId).emit('nextRound', nextRoundData); // Send as nextRound so frontend handles it
