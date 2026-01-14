@@ -49,7 +49,8 @@ class _MyAppState extends State<MyApp> {
         final uri = Uri.parse(settings.name ?? '/');
         
         // Merge arguments from URL query params and internal navigation args
-        final args = (settings.arguments as Map<String, dynamic>?) ?? <String, dynamic>{};
+        final initialArgs = (settings.arguments as Map<String, dynamic>?) ?? <String, dynamic>{};
+        final args = Map<String, dynamic>.from(initialArgs);
         args.addAll(uri.queryParameters);
         
         // Type conversion for boolean flags from URL

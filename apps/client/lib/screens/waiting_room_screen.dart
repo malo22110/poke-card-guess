@@ -49,6 +49,8 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
       _initSocket();
       _fetchLobbyDetails();
     } else {
+      lobbyId = '';
+      isHost = false;
       // Redirect to lobby if accessed without ID
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.of(context).pushReplacementNamed('/lobby');
@@ -125,7 +127,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   }
 
   Future<void> _startGame() async {
-    if (!isHost) return;
+    if (lobbyId.isEmpty || !isHost) return;
     // Notify server via WS
     _socketService.startGame(lobbyId, guestId ?? 'host');
   }
@@ -162,7 +164,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Lobby: ${lobbyId}',
+                    'Lobby: ${lobbyId.isEmpty ? "Loading..." : lobbyId}',
                     style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 2),
                   ),
                   const SizedBox(height: 48),
