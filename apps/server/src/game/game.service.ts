@@ -235,6 +235,7 @@ export class GameService {
       return {
         status: 'FINISHED',
         scores: finalScores,
+        playerNames: Object.fromEntries(lobby.playerNames),
         history: lobby.cards.map((card, index) => ({
           name: card.name,
           fullImageUrl: card.fullImageUrl,

@@ -322,6 +322,10 @@ class _GameScreenState extends State<GameScreen> {
          if (data['scores'] != null) {
            _scores = Map<String, int>.from(data['scores']);
          }
+
+         if (data['playerNames'] != null) {
+           _playerNames = Map<String, String>.from(data['playerNames']);
+         }
          
          // Extract full card history from server to ensure all cards are shown
          if (data['history'] != null) {
@@ -497,6 +501,7 @@ class _GameScreenState extends State<GameScreen> {
             Scoreboard(
               scores: _scores,
               currentUserId: _guestId,
+              playerNames: _playerNames,
             ),
           const SizedBox(height: 24),
           
