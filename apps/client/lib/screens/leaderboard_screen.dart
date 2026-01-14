@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:pokecardguess/config/app_config.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   final String? authToken;
@@ -28,7 +29,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   Future<void> _fetchGameModes() async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/gamemodes'),
+        Uri.parse('${AppConfig.apiBaseUrl}/gamemodes'),
         // Auth not strictly required for reading modes, but good practice
         headers: widget.authToken != null 
           ? {'Authorization': 'Bearer ${widget.authToken}'}
@@ -64,7 +65,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/gamemodes/$gameModeId/leaderboard'),
+        Uri.parse('${AppConfig.apiBaseUrl}/gamemodes/$gameModeId/leaderboard'),
       );
 
       if (response.statusCode == 200) {

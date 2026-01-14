@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:pokecardguess/config/app_config.dart';
 import '../services/game_socket_service.dart';
 import '../widgets/common/custom_app_bar.dart';
 import '../widgets/common/app_drawer.dart';
@@ -70,7 +71,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   Future<void> _fetchUserProfile() async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/users/me'),
+        Uri.parse('${AppConfig.apiBaseUrl}/users/me'),
         headers: {
           'Authorization': 'Bearer $authToken',
         },
@@ -92,7 +93,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   Future<void> _fetchLobbyDetails() async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/game/$lobbyId/status'),
+        Uri.parse('${AppConfig.apiBaseUrl}/game/$lobbyId/status'),
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

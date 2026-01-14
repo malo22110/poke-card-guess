@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:pokecardguess/config/app_config.dart';
 
 import '../widgets/game/game_header.dart';
 import '../widgets/game/card_display.dart';
@@ -154,7 +155,7 @@ class _GameScreenState extends State<GameScreen> {
   Future<void> _fetchInitialRound() async {
      try {
         final response = await http.get(
-          Uri.parse('http://localhost:3000/game/$_lobbyId/round'),
+          Uri.parse('${AppConfig.apiBaseUrl}/game/$_lobbyId/round'),
         );
         if (response.statusCode == 200) {
            _handleRoundUpdate(jsonDecode(response.body));

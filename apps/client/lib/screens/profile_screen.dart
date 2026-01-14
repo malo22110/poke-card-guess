@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:pokecardguess/config/app_config.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String? authToken;
@@ -32,7 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/users/me'),
+        Uri.parse('${AppConfig.apiBaseUrl}/users/me'),
         headers: {
           'Authorization': 'Bearer ${widget.authToken}',
         },

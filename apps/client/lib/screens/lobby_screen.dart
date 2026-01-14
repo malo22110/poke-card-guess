@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
+import 'package:pokecardguess/config/app_config.dart';
 import '../widgets/common/custom_app_bar.dart';
 import '../widgets/common/app_drawer.dart';
 import '../widgets/footer.dart';
@@ -38,7 +39,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
   Future<void> _fetchUserProfile() async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/users/me'),
+        Uri.parse('${AppConfig.apiBaseUrl}/users/me'),
         headers: {
           'Authorization': 'Bearer ${widget.authToken}',
         },
@@ -79,7 +80,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:3000/game/create'),
+        Uri.parse('${AppConfig.apiBaseUrl}/game/create'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${widget.authToken}',
@@ -120,7 +121,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:3000/game/join'),
+        Uri.parse('${AppConfig.apiBaseUrl}/game/join'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${widget.authToken}',

@@ -1,5 +1,6 @@
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'dart:async';
+import 'package:pokecardguess/config/app_config.dart';
 
 class GameSocketService {
   static final GameSocketService _instance = GameSocketService._internal();
@@ -30,7 +31,7 @@ class GameSocketService {
 
   void _initSocket() {
     // Replace with your actual server URL
-    socket = IO.io('http://localhost:3000', <String, dynamic>{
+    socket = IO.io(AppConfig.socketBaseUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
     });

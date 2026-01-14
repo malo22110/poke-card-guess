@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:pokecardguess/config/app_config.dart';
 
 class CreateGameScreen extends StatefulWidget {
   final String? authToken;
@@ -121,7 +122,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
   Future<void> _fetchGameModes() async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/gamemodes'),
+        Uri.parse('${AppConfig.apiBaseUrl}/gamemodes'),
         headers: _authToken != null 
           ? {'Authorization': 'Bearer $_authToken'}
           : {},
@@ -157,7 +158,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
       // Fetch sets from backend
       // Note: Assuming optional auth guard allows access or we pass token if available
        final response = await http.get(
-        Uri.parse('http://localhost:3000/game/sets'),
+        Uri.parse('${AppConfig.apiBaseUrl}/game/sets'),
         headers: _authToken != null 
           ? {'Authorization': 'Bearer $_authToken'}
           : {},
@@ -182,7 +183,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
   Future<void> _fetchRarities() async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/game/rarities'),
+        Uri.parse('${AppConfig.apiBaseUrl}/game/rarities'),
         headers: _authToken != null 
           ? {'Authorization': 'Bearer $_authToken'}
           : {},
@@ -230,7 +231,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
       };
 
       final response = await http.post(
-        Uri.parse('http://localhost:3000/game/preview-cards'),
+        Uri.parse('${AppConfig.apiBaseUrl}/game/preview-cards'),
         headers: {
           'Content-Type': 'application/json',
           if (_authToken != null) 'Authorization': 'Bearer $_authToken',
@@ -319,7 +320,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
       }
 
       final response = await http.post(
-        Uri.parse('http://localhost:3000/game/create'),
+        Uri.parse('${AppConfig.apiBaseUrl}/game/create'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_authToken',
@@ -492,7 +493,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:3000/gamemodes/$id/upvote'),
+        Uri.parse('${AppConfig.apiBaseUrl}/gamemodes/$id/upvote'),
         headers: {'Authorization': 'Bearer $_authToken'},
       );
 
@@ -719,7 +720,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
       };
 
       final response = await http.post(
-        Uri.parse('http://localhost:3000/gamemodes'),
+        Uri.parse('${AppConfig.apiBaseUrl}/gamemodes'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_authToken',

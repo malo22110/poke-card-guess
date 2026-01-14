@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:pokecardguess/config/app_config.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final String? authToken;
@@ -37,7 +38,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   Future<void> _fetchCurrentProfile() async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/users/me'),
+        Uri.parse('${AppConfig.apiBaseUrl}/users/me'),
         headers: {
           'Authorization': 'Bearer ${widget.authToken}',
         },
@@ -83,7 +84,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       } else {
         // Authenticated user: Update backend
         final response = await http.patch(
-          Uri.parse('http://localhost:3000/users/profile'),
+          Uri.parse('${AppConfig.apiBaseUrl}/users/profile'),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ${widget.authToken}',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/auth_storage_service.dart';
+import 'package:pokecardguess/config/app_config.dart';
 
 class AuthCallbackScreen extends StatefulWidget {
   final String token;
@@ -32,7 +33,7 @@ class _AuthCallbackScreenState extends State<AuthCallbackScreen> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/users/me'),
+        Uri.parse('${AppConfig.apiBaseUrl}/users/me'),
         headers: {
           'Authorization': 'Bearer ${widget.token}',
         },

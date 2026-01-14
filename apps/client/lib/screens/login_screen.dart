@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/footer.dart';
+import 'package:pokecardguess/config/app_config.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 
   Future<void> _loginGoogle() async {
-    final url = Uri.parse('http://localhost:3000/auth/google');
+    final url = Uri.parse('${AppConfig.apiBaseUrl}/auth/google');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, webOnlyWindowName: '_self');
     }
   }
 
   Future<void> _loginFacebook() async {
-    final url = Uri.parse('http://localhost:3000/auth/facebook');
+    final url = Uri.parse('${AppConfig.apiBaseUrl}/auth/facebook');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, webOnlyWindowName: '_self');
     }
