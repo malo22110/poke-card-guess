@@ -56,6 +56,22 @@ class AppDrawer extends StatelessWidget {
                 Navigator.of(context).pushNamed('/profile', arguments: {'authToken': authToken});
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.emoji_events, color: Colors.amber),
+              title: const Text('Trophies', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).pushNamed('/trophies', arguments: {'authToken': authToken});
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.leaderboard, color: Colors.green),
+              title: const Text('Leaderboard', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).pushNamed('/leaderboard', arguments: {'authToken': authToken});
+              },
+            ),
              ListTile(
               leading: const Icon(Icons.settings, color: Colors.white),
               title: const Text('Settings', style: TextStyle(color: Colors.white)),

@@ -8,6 +8,7 @@ import 'screens/auth_callback_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/profile_setup_screen.dart';
 import 'screens/terms_and_conditions_screen.dart';
+import 'screens/trophies_screen.dart';
 import 'screens/leaderboard_screen.dart';
 
 import 'services/auth_storage_service.dart';
@@ -112,6 +113,8 @@ class _MyAppState extends State<MyApp> {
             );
           case '/terms':
             return MaterialPageRoute(builder: (_) => const TermsAndConditionsScreen(), settings: newSettings);
+          case '/trophies':
+            return MaterialPageRoute(builder: (_) => const TrophiesScreen(), settings: newSettings);
           case '/leaderboard':
             return MaterialPageRoute(builder: (_) => LeaderboardScreen(authToken: args['authToken']), settings: newSettings);
         }
