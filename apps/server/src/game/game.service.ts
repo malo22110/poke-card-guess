@@ -145,6 +145,11 @@ export class GameService {
       return {
         status: 'FINISHED',
         scores: finalScores,
+        history: lobby.cards.map((card) => ({
+          name: card.name,
+          fullImageUrl: card.fullImageUrl,
+          set: card.set,
+        })),
       };
     }
     const card = lobby.cards[lobby.currentRound - 1];

@@ -272,6 +272,16 @@ class _GameScreenState extends State<GameScreen> {
          if (data['scores'] != null) {
            _scores = Map<String, int>.from(data['scores']);
          }
+         
+         // Extract full card history from server to ensure all cards are shown
+         if (data['history'] != null) {
+           _cardHistory = (data['history'] as List).map((item) => {
+             'name': item['name'].toString(),
+             'imageUrl': item['fullImageUrl'].toString(),
+             'set': item['set'].toString(),
+           }).toList();
+         }
+         
          error = 'Game Finished!';
          _isLoading = false;
        });
