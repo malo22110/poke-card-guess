@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 
 import '../widgets/game/game_header.dart';
 import '../widgets/game/card_display.dart';
@@ -23,9 +22,7 @@ class _GameScreenState extends State<GameScreen> {
   // ... (Variables mostly same, remove Auth logic if only using ws, but might need auth token for WS init if not singleton)
   String? _lobbyId;
   String? _gameId;
-  String? _authToken;
   String? _guestId;
-  bool _isHost = false;
 
   String? _croppedImage;
   String? _fullImageUrl;
@@ -42,7 +39,7 @@ class _GameScreenState extends State<GameScreen> {
 
   final _socketService = GameSocketService();
   StreamSubscription? _roundSub;
-  StreamSubscription? _guessResultSub; // For our own guess feedback (e.g. invalid) or general handling?
+  StreamSubscription? _guessResultSub;
   
   // Timer variables
   Timer? _countdownTimer;
@@ -52,11 +49,9 @@ class _GameScreenState extends State<GameScreen> {
   // Scoreboard and waiting state
   Map<String, int> _scores = {};
   bool _isWaitingForRoundEnd = false;
-  int _currentRound = 0;
-  int _totalRounds = 0;
   
   // Card history for final screen
-  List<Map<String, String>> _cardHistory = [];
+  List<Map<String, dynamic>> _cardHistory = [];
   
   // Actually the Gateway emits 'guessResult' only to the guesser. 
   // It emits 'roundFinished' to EVERYONE if correct.
@@ -104,8 +99,6 @@ class _GameScreenState extends State<GameScreen> {
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (args != null) {
       _lobbyId = args['lobbyId'];
-      _isHost = args['isHost'] ?? false;
-      _authToken = args['authToken'];
       _guestId = args['guestId'];
       
       if (_gameId == null) {
@@ -146,18 +139,26 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _fetchInitialRound() async {
-     // Fallback to HTTP just for initial sync to get the image, 
-     // fully switching to WS for the *flow*.
      try {
         final response = await http.post(
-          Uri.parse('http://localhost:3000/game/start'), // logic handles "already playing" -> returns current round
+          Uri.parse('http://localhost:3000/game/start'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'lobbyId': _lobbyId, if (_guestId!=null) 'guestId':_guestId})
         );
         if (response.statusCode == 200 || response.statusCode == 201) {
            _handleRoundUpdate(jsonDecode(response.body));
+        } else {
+           if (mounted) setState(() {
+             error = 'Failed to load game: ${response.statusCode}';
+             _isLoading = false;
+           });
         }
-     } catch(e) { print(e); }
+     } catch(e) {
+       if (mounted) setState(() {
+         error = 'Connection error: $e';
+         _isLoading = false;
+       });
+     }
   }
 
   // Alias for compatibility with UI calls
@@ -279,6 +280,7 @@ class _GameScreenState extends State<GameScreen> {
              'name': item['name'].toString(),
              'imageUrl': item['fullImageUrl'].toString(),
              'set': item['set'].toString(),
+             'results': item['results'] ?? [], // Preserve the results list
            }).toList();
          }
          
@@ -307,8 +309,7 @@ class _GameScreenState extends State<GameScreen> {
       }
       
       // Extract round info
-      _currentRound = data['round'] ?? 0;
-      _totalRounds = data['totalRounds'] ?? 0;
+      // _currentRound and _totalRounds removed as they are unused for now
     });
     
     // Start the countdown timer for the new round
@@ -381,7 +382,7 @@ class _GameScreenState extends State<GameScreen> {
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
           ),
           child: const Center(
@@ -395,7 +396,7 @@ class _GameScreenState extends State<GameScreen> {
         Text(
           'Loading Pokemon card...',
           style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             fontSize: 16,
           ),
         ),
@@ -407,9 +408,10 @@ class _GameScreenState extends State<GameScreen> {
     // Check if this is a "Game Finished" state
     final isGameFinished = error == 'Game Finished!';
     
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
         if (isGameFinished) ...[
           // Final Scoreboard
           Icon(
@@ -451,48 +453,90 @@ class _GameScreenState extends State<GameScreen> {
                   ),
                   const SizedBox(height: 16),
                   Container(
-                    constraints: const BoxConstraints(maxHeight: 300),
-                    child: GridView.builder(
+                    constraints: const BoxConstraints(maxHeight: 400),
+                    child: ListView.builder(
                       shrinkWrap: true,
-                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 150,
-                        childAspectRatio: 0.7,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                      ),
                       itemCount: _cardHistory.length,
                       itemBuilder: (context, index) {
                         final card = _cardHistory[index];
-                        return Column(
-                          children: [
-                            Expanded(
-                              child: ClipRRect(
+                        final results = (card['results'] as List<dynamic>?) ?? [];
+                        
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Card Image
+                              ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
                                 child: Image.network(
                                   card['imageUrl']!,
+                                  width: 60,
+                                  height: 84, // 0.7 aspect ratio
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: Colors.grey,
-                                      child: const Icon(Icons.error, color: Colors.white),
-                                    );
-                                  },
+                                  errorBuilder: (c, e, s) => Container(width: 60, height: 84, color: Colors.grey),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              card['name']!,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                              const SizedBox(width: 16),
+                              
+                              // Card Details & Results
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      card['name']!,
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                    ),
+                                    Text(
+                                      card['set']!,
+                                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Divider(color: Colors.white24, height: 1),
+                                    const SizedBox(height: 8),
+                                    if (results.isEmpty)
+                                       Text('No successful guesses', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontStyle: FontStyle.italic, fontSize: 12))
+                                    else
+                                       Column(
+                                         children: results.map<Widget>((r) {
+                                           final isCorrect = r['correct'] == true;
+                                           final points = r['points'];
+                                           final time = (r['timeTaken'] as num) / 1000.0;
+                                           
+                                           return Padding(
+                                             padding: const EdgeInsets.symmetric(vertical: 2),
+                                             child: Row(
+                                               children: [
+                                                  Icon(
+                                                    isCorrect ? Icons.check_circle : Icons.cancel, 
+                                                    size: 14, 
+                                                    color: isCorrect ? Colors.greenAccent : Colors.redAccent
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(child: Text(r['userId'] == _guestId ? 'You' : r['userId'], style: const TextStyle(color: Colors.white70, fontSize: 13))),
+                                                  if (isCorrect) ...[
+                                                    Text('${time.toStringAsFixed(1)}s', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                                                    const SizedBox(width: 12),
+                                                    Text('+$points pts', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
+                                                  ] else 
+                                                    const Text('Given Up', style: TextStyle(color: Colors.white30, fontSize: 12))
+                                               ],
+                                             ),
+                                           );
+                                         }).toList(),
+                                       )
+                                  ],
+                                ),
+                              )
+                            ],
+                          ),
                         );
                       },
                     ),
@@ -523,7 +567,7 @@ class _GameScreenState extends State<GameScreen> {
           Icon(
             Icons.error_outline,
             size: 80,
-            color: Colors.red.withOpacity(0.7),
+            color: Colors.red.withValues(alpha: 0.7),
           ),
           const SizedBox(height: 16),
           Text(
@@ -550,6 +594,7 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ],
       ],
+      ),
     );
   }
 
@@ -581,9 +626,9 @@ class _GameScreenState extends State<GameScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.2),
+                        color: Colors.orange.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                        border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -627,7 +672,7 @@ class _GameScreenState extends State<GameScreen> {
             // Scoreboard (right side)
             if (_scores.isNotEmpty) ...[
               const SizedBox(width: 20),
-              Container(
+              SizedBox(
                 width: 250,
                 child: Scoreboard(
                   scores: _scores,

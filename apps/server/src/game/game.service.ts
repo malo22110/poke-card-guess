@@ -30,6 +30,7 @@ export interface GameLobby {
   roundResults: Map<string, boolean>; // userId -> hasFinishedRound
   scores: Map<string, number>; // userId -> total score
   roundStartTime: number;
+  history: Map<number, RoundResult[]>; // round number -> results
   timer?: any; // NodeJS.Timeout
 }
 
@@ -39,6 +40,13 @@ export interface GameCard {
   fullImageUrl: string;
   set: string;
   croppedImage: string; // Base64
+}
+
+export interface RoundResult {
+  userId: string;
+  points: number;
+  timeTaken: number;
+  correct: boolean;
 }
 
 @Injectable()
@@ -76,6 +84,7 @@ export class GameService {
       roundResults: new Map(),
       scores: new Map([[hostId, 0]]), // Initialize host score
       roundStartTime: 0,
+      history: new Map(),
     };
 
     // Pre-load cards during creation
@@ -155,10 +164,11 @@ export class GameService {
       return {
         status: 'FINISHED',
         scores: finalScores,
-        history: lobby.cards.map((card) => ({
+        history: lobby.cards.map((card, index) => ({
           name: card.name,
           fullImageUrl: card.fullImageUrl,
           set: card.set,
+          results: lobby.history.get(index + 1) || [],
         })),
       };
     }
@@ -208,6 +218,16 @@ export class GameService {
 
       await this.saveRoundResult(userId, currentCard, true);
 
+      // Save detailed history
+      const currentRoundHistory = lobby.history.get(lobby.currentRound) || [];
+      currentRoundHistory.push({
+        userId,
+        points: roundScore,
+        timeTaken: elapsedTime,
+        correct: true,
+      });
+      lobby.history.set(lobby.currentRound, currentRoundHistory);
+
       const allFinished = lobby.players.every((p) => lobby.roundResults.get(p));
 
       const result = {
@@ -251,6 +271,20 @@ export class GameService {
     lobby.roundResults.set(userId, true);
     await this.saveRoundResult(userId, currentCard, false);
 
+    // Save detailed history for give up
+    const elapsedTime = Math.max(
+      0,
+      Date.now() - (lobby.roundStartTime || Date.now()),
+    );
+    const currentRoundHistory = lobby.history.get(lobby.currentRound) || [];
+    currentRoundHistory.push({
+      userId,
+      points: 0,
+      timeTaken: elapsedTime,
+      correct: false,
+    });
+    lobby.history.set(lobby.currentRound, currentRoundHistory);
+
     const allFinished = lobby.players.every((p) => lobby.roundResults.get(p));
 
     const result = {
@@ -280,6 +314,16 @@ export class GameService {
       if (!lobby.roundResults.has(userId)) {
         lobby.roundResults.set(userId, true);
         await this.saveRoundResult(userId, currentCard, false);
+
+        // Save detailed history for timeout
+        const currentRoundHistory = lobby.history.get(lobby.currentRound) || [];
+        currentRoundHistory.push({
+          userId,
+          points: 0,
+          timeTaken: 30000, // Timeout
+          correct: false,
+        });
+        lobby.history.set(lobby.currentRound, currentRoundHistory);
       }
     }
 
