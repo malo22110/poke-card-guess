@@ -45,9 +45,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const status = this.gameService.getLobbyStatus(lobbyId);
     client.emit('gameStatus', status);
 
-    // Notify room of new player count
+    // Notify room of new player count and player list
     this.server.to(lobbyId).emit('playerUpdate', {
       count: status.players.length,
+      playerList: status.players.map((p) => p.name),
     });
   }
 

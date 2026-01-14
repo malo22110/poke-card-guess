@@ -23,6 +23,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
 
   final _socketService = GameSocketService();
   StreamSubscription? _playerCountSub;
+  StreamSubscription? _playerListSub;
   StreamSubscription? _statusSub;
 
   int _playerCount = 1;
@@ -127,8 +128,14 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
     _playerCountSub = _socketService.playerCountStream.listen((count) {
       if (mounted) {
         setState(() => _playerCount = count);
-        // optimal: re-fetch details to get updated names
-        _fetchLobbyDetails();
+      }
+    });
+
+    _playerListSub = _socketService.playerListStream.listen((list) {
+      if (mounted) {
+        setState(() {
+          _playerList = list;
+        });
       }
     });
 
@@ -152,6 +159,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   @override
   void dispose() {
     _playerCountSub?.cancel();
+    _playerListSub?.cancel();
     _statusSub?.cancel();
     // Do not disconnect socket service here as GameScreen needs it?
     // Actually GameScreen might need it. Let's keep it connected.
