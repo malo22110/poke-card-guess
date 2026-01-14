@@ -189,23 +189,41 @@ export class GameModesService {
   }
 
   async getLeaderboard(gameModeId: string) {
-    // Group by user and find max score? Or sum?
-    // Leaderboard usually implies best single game score for "classic" logic.
-    // Or accumulative? "The user mentioned 'leaderboard for each game-modes'"
-    // Typically means top high scores.
-
-    // Prisma grouping or raw query might be needed for efficient ranking.
-    // For now, let's just get top 50 sessions.
-
-    return this.prisma.gameSession.findMany({
+    // Get distinct users with their max score
+    const grouped = await this.prisma.gameSession.groupBy({
+      by: ['userId'],
       where: { gameModeId },
-      orderBy: { score: 'desc' },
-      take: 50,
-      include: {
-        user: {
-          select: { name: true, picture: true, socials: true },
+      _max: {
+        score: true,
+      },
+      orderBy: {
+        _max: {
+          score: 'desc',
         },
       },
+      take: 50,
     });
+
+    // Fetch details for these specific best sessions
+    // Using findFirst for each to handle potential duplicates (same max score twice)
+    // and to load the User relation.
+    const leaderboard = await Promise.all(
+      grouped.map(async (group) => {
+        return this.prisma.gameSession.findFirst({
+          where: {
+            gameModeId,
+            userId: group.userId,
+            score: group._max.score as number,
+          },
+          include: {
+            user: {
+              select: { name: true, picture: true, socials: true },
+            },
+          },
+        });
+      }), // No need to be wrapped in filters since findFirst will find at least one.
+    );
+
+    return leaderboard.filter((item) => item !== null);
   }
 }
