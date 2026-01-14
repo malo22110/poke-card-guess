@@ -307,7 +307,9 @@ class _LobbyScreenState extends State<LobbyScreen> {
                       ),
 
                     ElevatedButton(
-                      onPressed: _isLoading ? null : () {
+                      onPressed: (_isLoading || widget.authToken == null) 
+                        ? null 
+                        : () {
                         Navigator.of(context).pushNamed('/create-game', arguments: {
                           'authToken': widget.authToken,
                           'guestName': _guestName,
@@ -318,10 +320,12 @@ class _LobbyScreenState extends State<LobbyScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         backgroundColor: Colors.amber,
                         foregroundColor: Colors.black,
+                        disabledBackgroundColor: Colors.grey.withOpacity(0.5),
+                        disabledForegroundColor: Colors.white70,
                       ),
                       child: _isLoading 
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Text('Create New Game', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        : Text(widget.authToken == null ? 'Login to Create Game' : 'Create New Game', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
 
                     const SizedBox(height: 16),

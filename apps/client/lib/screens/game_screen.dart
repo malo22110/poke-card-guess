@@ -153,16 +153,14 @@ class _GameScreenState extends State<GameScreen> {
 
   Future<void> _fetchInitialRound() async {
      try {
-        final response = await http.post(
-          Uri.parse('http://localhost:3000/game/start'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'lobbyId': _lobbyId, if (_guestId!=null) 'guestId':_guestId})
+        final response = await http.get(
+          Uri.parse('http://localhost:3000/game/$_lobbyId/round'),
         );
-        if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.statusCode == 200) {
            _handleRoundUpdate(jsonDecode(response.body));
         } else {
            if (mounted) setState(() {
-             error = 'Failed to load game: ${response.statusCode}';
+             error = 'Failed to load game round: ${response.statusCode}';
              _isLoading = false;
            });
         }
@@ -224,7 +222,7 @@ class _GameScreenState extends State<GameScreen> {
                 for (var item in data['playerStatuses']) {
                   final userId = item['userId'] as String;
                   _playerNames[userId] = item['name']?.toString() ?? 'Player';
-                  _playerStatuses[userId] = (item['hasFinished'] == true) ? 'Finished' : 'Thinking';
+                  _playerStatuses[userId] = item['status']?.toString() ?? 'thinking';
                 }
               } else {
                 _playerStatuses = Map<String, String>.from(data['playerStatuses']);
@@ -278,7 +276,7 @@ class _GameScreenState extends State<GameScreen> {
             for (var item in result['playerStatuses']) {
               final userId = item['userId'] as String;
               _playerNames[userId] = item['name']?.toString() ?? 'Player';
-              _playerStatuses[userId] = (item['hasFinished'] == true) ? 'Finished' : 'Thinking';
+              _playerStatuses[userId] = item['status']?.toString() ?? 'thinking';
             }
           } else {
             _playerStatuses = Map<String, String>.from(result['playerStatuses']);
@@ -365,8 +363,8 @@ class _GameScreenState extends State<GameScreen> {
           for (var item in data['playerStatuses']) {
             final userId = item['userId'] as String;
             _playerNames[userId] = item['name']?.toString() ?? 'Player';
-            // storing status string based on hasFinished boolean
-            _playerStatuses[userId] = (item['hasFinished'] == true) ? 'Finished' : 'Thinking';
+            // storing status string based on backend status
+            _playerStatuses[userId] = item['status']?.toString() ?? 'thinking';
           }
         } else {
            _playerStatuses = Map<String, String>.from(data['playerStatuses']);

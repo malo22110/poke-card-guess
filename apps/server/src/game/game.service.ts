@@ -141,6 +141,7 @@ export class GameService {
     if (!lobby.players.includes(userId)) {
       lobby.players.push(userId);
       lobby.playerNames.set(userId, userName);
+      lobby.scores.set(userId, 0); // Initialize score for new player
     }
 
     return lobby;
@@ -166,12 +167,24 @@ export class GameService {
   }
 
   getRoundPlayerStatuses(lobby: GameLobby) {
-    return lobby.players.map((id) => ({
-      userId: id,
-      name: lobby.playerNames.get(id),
-      hasFinished: lobby.roundResults.get(id) || false,
-      score: lobby.scores.get(id) || 0,
-    }));
+    const currentHistory = lobby.history.get(lobby.currentRound) || [];
+    return lobby.players.map((id) => {
+      const result = currentHistory.find((r) => r.userId === id);
+      let status = 'thinking';
+      if (result) {
+        status = result.correct ? 'guessed' : 'given_up';
+      } else if (lobby.roundResults.get(id)) {
+        // Fallback if marked finished but not in history (shouldn't happen but safe)
+        status = 'given_up';
+      }
+      return {
+        userId: id,
+        name: lobby.playerNames.get(id),
+        hasFinished: lobby.roundResults.get(id) || false,
+        status,
+        score: lobby.scores.get(id) || 0,
+      };
+    });
   }
 
   async startGame(lobbyId: string, userId: string): Promise<any> {

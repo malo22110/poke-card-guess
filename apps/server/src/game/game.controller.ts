@@ -6,6 +6,8 @@ import {
   Req,
   Get,
   Param,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { GameService } from './game.service';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
@@ -35,9 +37,13 @@ export class GameController {
     },
     @Req() req: any,
   ) {
-    const userId = req.user
-      ? req.user.id || req.user.userId
-      : 'guest-host-' + Math.random().toString(36).substr(2, 9);
+    if (!req.user) {
+      throw new HttpException(
+        'Only authenticated users can create games',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+    const userId = req.user.id || req.user.userId;
 
     return await this.gameService.createLobby(
       userId,
@@ -47,7 +53,7 @@ export class GameController {
         secretOnly: body.secretOnly,
         rarities: body.rarities,
       },
-      req.user?.name || body.guestName,
+      req.user.name || body.guestName, // Prioritize auth name
       body.gameModeId,
     );
   }
@@ -123,6 +129,15 @@ export class GameController {
       ? req.user.id || req.user.userId
       : body.guestId || 'guest';
     return this.gameService.giveUp(body.lobbyId, userId);
+  }
+
+  @Get(':lobbyId/round')
+  async getRound(@Param('lobbyId') lobbyId: string) {
+    const lobby = this.gameService.getLobby(lobbyId);
+    if (!lobby) {
+      throw new HttpException('Lobby not found', HttpStatus.NOT_FOUND); // Import HttpException, HttpStatus if not available (they are)
+    }
+    return await this.gameService.getCurrentRoundData(lobby);
   }
 
   @Get('sets')

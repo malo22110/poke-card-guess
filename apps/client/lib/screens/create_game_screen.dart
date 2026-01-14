@@ -75,6 +75,23 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
     if (args != null) {
       _authToken = args['authToken'];
     }
+
+    // Guard: Prevent guests from accessing this screen
+    if (_authToken == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('You must be logged in to create a game.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+          Navigator.of(context).pop();
+        }
+      });
+      return;
+    }
+
     // Fetch data only if we haven't done so
     if (_availableSets.isEmpty) {
       _fetchSets();
@@ -781,14 +798,16 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             ElevatedButton(
-              onPressed: () {
-                if (_isCreating) return null;
-                if (_tabController.index == 0) {
-                   return _selectedGameModeId != null ? _createGame : null;
-                } else {
-                   return _selectedSetId != null ? _createGame : null;
-                }
-              }(),
+              onPressed: _authToken == null 
+                  ? null 
+                  : () {
+                    if (_isCreating) return null;
+                    if (_tabController.index == 0) {
+                       return _selectedGameModeId != null ? _createGame : null;
+                    } else {
+                       return _selectedSetId != null ? _createGame : null;
+                    }
+                  }(),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.amber,
                 foregroundColor: Colors.black,
@@ -797,16 +816,18 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
                 padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: _isCreating
-                  ? const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)),
-                        SizedBox(width: 12),
-                        Text('Fetching random cards...', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ],
-                    )
-                  : const Text('CREATE GAME', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+              child: _authToken == null
+                  ? const Text('LOGIN TO CREATE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
+                  : _isCreating
+                      ? const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)),
+                            SizedBox(width: 12),
+                            Text('Fetching random cards...', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ],
+                        )
+                      : const Text('CREATE GAME', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
             ),
           ],
         ),
