@@ -50,6 +50,9 @@ class _GameScreenState extends State<GameScreen> {
   Map<String, int> _scores = {};
   bool _isWaitingForRoundEnd = false;
   
+  int _currentRound = 0;
+  int _totalRounds = 0;
+  
   // Card history for final screen
   List<Map<String, dynamic>> _cardHistory = [];
   
@@ -309,7 +312,8 @@ class _GameScreenState extends State<GameScreen> {
       }
       
       // Extract round info
-      // _currentRound and _totalRounds removed as they are unused for now
+      _currentRound = data['round'] ?? 0;
+      _totalRounds = data['totalRounds'] ?? 0;
     });
     
     // Start the countdown timer for the new round
@@ -354,9 +358,9 @@ class _GameScreenState extends State<GameScreen> {
           child: Column(
             children: [
               GameHeader(
-                score: score,
-                attempts: attempts,
-                remainingSeconds: _remainingSeconds,
+                currentRound: _currentRound,
+                totalRounds: _totalRounds,
+                remainingSeconds: (error == 'Game Finished!') ? null : _remainingSeconds,
               ),
               Expanded(
                 child: Center(

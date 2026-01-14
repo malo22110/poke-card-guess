@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
 class GameHeader extends StatelessWidget {
-  final int score;
-  final int attempts;
+  final int currentRound;
+  final int totalRounds;
   final int? remainingSeconds;
 
   const GameHeader({
     super.key,
-    required this.score,
-    required this.attempts,
+    required this.currentRound,
+    required this.totalRounds,
     this.remainingSeconds,
   });
 
@@ -80,10 +80,10 @@ class GameHeader extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.stars, color: Colors.amber, size: 20),
+                const Icon(Icons.style, color: Colors.amber, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'Score: $score/$attempts',
+                  'Round: $currentRound / $totalRounds',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
