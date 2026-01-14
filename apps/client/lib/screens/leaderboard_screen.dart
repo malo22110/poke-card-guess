@@ -84,6 +84,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     }
   }
 
+  TextEditingController _searchController = TextEditingController();
+  String _searchText = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -111,9 +120,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               _buildModeSelector(),
             
             Expanded(
-              child: _isLoadingLeaderboard 
-                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                  : _buildLeaderboardList(),
+              child: _searchText.isNotEmpty 
+                  ? _buildSearchResults()
+                  : (_isLoadingLeaderboard 
+                      ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                      : _buildLeaderboardList()),
             ),
           ],
         ),
@@ -129,35 +140,138 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       );
     }
 
-    return Container(
-      height: 60,
-      margin: const EdgeInsets.symmetric(vertical: 16),
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        itemCount: _gameModes.length,
-        separatorBuilder: (c, i) => const SizedBox(width: 12),
-        itemBuilder: (context, index) {
-          final mode = _gameModes[index];
-          final isSelected = mode['id'] == _selectedGameModeId;
-          
-          return ActionChip(
-            label: Text(mode['name']),
-            onPressed: () {
-              setState(() => _selectedGameModeId = mode['id']);
+    // Top 10 (or first 10) modes
+    final topModes = _gameModes.take(10).toList();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 1. Horizontal List of Top 10
+        Container(
+          height: 50,
+          margin: const EdgeInsets.only(top: 16, bottom: 8),
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: topModes.length,
+            separatorBuilder: (c, i) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final mode = topModes[index];
+              final isSelected = mode['id'] == _selectedGameModeId;
+              
+              return ActionChip(
+                label: Text(mode['name']),
+                onPressed: () {
+                  setState(() {
+                    _selectedGameModeId = mode['id'];
+                    _searchText = ''; // Clear search when picking from top list
+                    _searchController.clear();
+                  });
+                  _fetchLeaderboard(mode['id']);
+                },
+                backgroundColor: isSelected ? Colors.amber : Colors.white.withOpacity(0.9),
+                labelStyle: TextStyle(
+                  color: Colors.black,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+                avatar: mode['isOfficial'] == true 
+                    ? const Icon(Icons.verified, size: 16, color: Colors.blue) 
+                    : null,
+                side: BorderSide.none,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              );
+            },
+          ),
+        ),
+
+        // 2. Search Input
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: TextField(
+            controller: _searchController,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Search other game modes...',
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+              prefixIcon: const Icon(Icons.search, color: Colors.white70),
+              suffixIcon: _searchText.isNotEmpty 
+                ? IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.white70),
+                    onPressed: () {
+                      setState(() {
+                        _searchController.clear();
+                        _searchText = '';
+                      });
+                    },
+                  ) 
+                : null,
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.1),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            onChanged: (val) {
+              setState(() {
+                _searchText = val;
+              });
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchResults() {
+    final results = _gameModes.where((mode) {
+      final name = mode['name'].toString().toLowerCase();
+      final query = _searchText.toLowerCase();
+      return name.contains(query);
+    }).toList();
+
+    if (results.isEmpty) {
+      return Center(
+        child: Text('No game modes found matching "$_searchText"', 
+          style: TextStyle(color: Colors.white.withOpacity(0.7))),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: results.length,
+      itemBuilder: (context, index) {
+        final mode = results[index];
+        final isSelected = mode['id'] == _selectedGameModeId;
+
+        return Card(
+          color: isSelected ? Colors.amber.withOpacity(0.2) : Colors.white.withOpacity(0.1),
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            leading: mode['isOfficial'] == true 
+                ? const Icon(Icons.verified, color: Colors.blue) 
+                : const Icon(Icons.videogame_asset, color: Colors.white70),
+            title: Text(mode['name'], 
+              style: TextStyle(
+                color: isSelected ? Colors.amber : Colors.white,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+              )
+            ),
+            trailing: isSelected ? const Icon(Icons.check, color: Colors.amber) : null,
+            onTap: () {
+              setState(() {
+                _selectedGameModeId = mode['id'];
+                _searchText = '';
+                _searchController.clear();
+              });
+               FocusScope.of(context).unfocus(); // Dismiss keyboard
               _fetchLeaderboard(mode['id']);
             },
-            backgroundColor: isSelected ? Colors.amber : Colors.white.withOpacity(0.9),
-            labelStyle: TextStyle(
-              color: Colors.black, // Dark text for readability on both Amber and White
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-            avatar: mode['isOfficial'] == true 
-                ? const Icon(Icons.verified, size: 16, color: Colors.blue) 
-                : null,
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
