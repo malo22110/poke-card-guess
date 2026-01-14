@@ -191,13 +191,23 @@ export class GameService {
     }
 
     const currentCard = lobby.cards[lobby.currentRound - 1];
-    const normalizedGuess = guess.trim().toLowerCase();
-    const normalizedActual = currentCard.name.toLowerCase();
+    const normalizedGuess = this.normalizeString(guess);
+    const normalizedActual = this.normalizeString(currentCard.name);
 
-    const isCorrect =
-      normalizedActual.includes(normalizedGuess) && normalizedGuess.length >= 3;
+    if (normalizedGuess.length < 3) {
+      return { correct: false };
+    }
 
-    if (isCorrect) {
+    const isPerfectMatch = normalizedGuess === normalizedActual;
+    const distance = this.getLevenshteinDistance(
+      normalizedGuess,
+      normalizedActual,
+    );
+    // Allow up to 3 typos
+    const isFuzzyMatch = distance <= 3;
+    const isSubstringMatch = normalizedActual.includes(normalizedGuess);
+
+    if (isPerfectMatch || isFuzzyMatch || isSubstringMatch) {
       lobby.roundResults.set(userId, true);
 
       // Calculate score based on time taken (points = remaining milliseconds of 30s round)
@@ -205,7 +215,16 @@ export class GameService {
         0,
         Date.now() - (lobby.roundStartTime || Date.now()),
       );
-      const roundScore = Math.max(0, 30000 - elapsedTime);
+      let roundScore = Math.max(0, 30000 - elapsedTime);
+
+      // Apply multiplier
+      if (isPerfectMatch) {
+        // Full score
+      } else if (isFuzzyMatch) {
+        roundScore = Math.floor(roundScore * 0.8);
+      } else if (isSubstringMatch) {
+        roundScore = Math.floor(roundScore * 0.5);
+      }
 
       const currentScore = lobby.scores.get(userId) || 0;
       lobby.scores.set(userId, currentScore + roundScore);
@@ -600,5 +619,49 @@ export class GameService {
       .extract({ left: 0, top: top, width: metadata.width, height: cropHeight })
       .toBuffer();
     return croppedBuffer.toString('base64');
+  }
+
+  private normalizeString(str: string): string {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  private getLevenshteinDistance(a: string, b: string): number {
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+
+    const matrix: number[][] = [];
+
+    // increment along the first column of each row
+    for (let i = 0; i <= b.length; i++) {
+      matrix[i] = [i];
+    }
+
+    // increment each column in the first row
+    for (let j = 0; j <= a.length; j++) {
+      matrix[0][j] = j;
+    }
+
+    // Fill in the rest of the matrix
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1, // substitution
+            Math.min(
+              matrix[i][j - 1] + 1, // insertion
+              matrix[i - 1][j] + 1, // deletion
+            ),
+          );
+        }
+      }
+    }
+
+    return matrix[b.length][a.length];
   }
 }
