@@ -276,6 +276,30 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                     ),
                   ),
 
+                  const SizedBox(height: 24),
+                  if (_gameConfig != null)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      width: double.infinity,
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text('Game Configuration', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 12),
+                          _buildConfigRow('Rounds', '${_gameConfig!['config']['rounds']}'),
+                          _buildConfigRow('Sets', '${(_gameConfig!['config']['sets'] as List).join(', ')}'),
+                          _buildConfigRow('Secret Only', '${_gameConfig!['config']['secretOnly'] ? 'Yes' : 'No'}'),
+                          if (_gameConfig!['config']['rarities'] != null)
+                             _buildConfigRow('Rarities', '${(_gameConfig!['config']['rarities'] as List).length} selected'),
+                        ],
+                      ),
+                    ),
+
                   const SizedBox(height: 48),
 
                   if (_error != null)
