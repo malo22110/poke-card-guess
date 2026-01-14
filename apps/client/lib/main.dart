@@ -114,7 +114,7 @@ class _MyAppState extends State<MyApp> {
           case '/terms':
             return MaterialPageRoute(builder: (_) => const TermsAndConditionsScreen(), settings: newSettings);
           case '/trophies':
-            return MaterialPageRoute(builder: (_) => const TrophiesScreen(), settings: newSettings);
+            return MaterialPageRoute(builder: (_) => TrophiesScreen(authToken: args['authToken']), settings: newSettings);
           case '/leaderboard':
             return MaterialPageRoute(builder: (_) => LeaderboardScreen(authToken: args['authToken']), settings: newSettings);
         }

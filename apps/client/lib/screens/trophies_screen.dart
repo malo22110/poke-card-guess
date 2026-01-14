@@ -7,7 +7,9 @@ import 'package:pokecardguess/widgets/trophy/trophy_card.dart';
 import 'package:pokecardguess/widgets/footer.dart';
 
 class TrophiesScreen extends StatefulWidget {
-  const TrophiesScreen({super.key});
+  final String? authToken;
+  
+  const TrophiesScreen({super.key, this.authToken});
 
   @override
   State<TrophiesScreen> createState() => _TrophiesScreenState();
@@ -54,7 +56,8 @@ class _TrophiesScreenState extends State<TrophiesScreen> {
         Uri.parse('${AppConfig.apiBaseUrl}/trophies/me'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${AppConfig.getToken()}',
+          if (widget.authToken != null)
+            'Authorization': 'Bearer ${widget.authToken}',
         },
       );
 
