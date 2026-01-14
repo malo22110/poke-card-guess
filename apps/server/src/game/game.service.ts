@@ -688,6 +688,68 @@ export class GameService {
     }
   }
 
+  async getPreviewCards(
+    sets: string[],
+    rarities: string[],
+  ): Promise<CardSummary[]> {
+    try {
+      let allCards: CardSummary[] = [];
+      const baseUrl = 'https://api.tcgdex.net/v2/fr/cards';
+
+      // 1. If rarities are specified, iterate and fetch
+      if (rarities && rarities.length > 0) {
+        for (const rarity of rarities) {
+          let url = `${baseUrl}?rarity=eq:${encodeURIComponent(rarity)}`;
+          if (sets.length > 0 && !sets.includes('all')) {
+            url += `&set.id=${sets.join('|')}`;
+          }
+          try {
+            const response = await axios.get<CardSummary[]>(url);
+            if (Array.isArray(response.data)) {
+              allCards.push(...response.data);
+            }
+          } catch (e) {
+            console.warn(`Preview fetch failed for rarity ${rarity}`, e);
+          }
+          // Optimization: If we have enough cards, maybe stop?
+          // But we want a random sample, so strictly we should fetch more.
+          // For response speed, maybe we limit if we have > 100 cards.
+          if (allCards.length > 100) break;
+        }
+      } else {
+        // 2. If no rarities specified (implies ALL), fetch by sets
+        if (sets.length > 0 && !sets.includes('all')) {
+          // We can't easily query "all cards from these N sets" in one go if N is large without rarity?
+          // Actually TCGDex supports field filtering.
+          // url = `${baseUrl}?set.id=${sets.join('|')}`
+          const url = `${baseUrl}?set.id=${sets.join('|')}`;
+          try {
+            const response = await axios.get<CardSummary[]>(url);
+            if (Array.isArray(response.data)) {
+              allCards = response.data;
+            }
+          } catch (e) {
+            console.warn(`Preview fetch failed for sets`, e);
+          }
+        }
+      }
+
+      // 3. Shuffle and limit to 20
+      return allCards
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 20)
+        .map((c) => ({
+          id: c.id,
+          localId: c.localId,
+          name: c.name,
+          image: `${c.image}/high.png`, // Construct full URL
+        }));
+    } catch (e) {
+      console.error('getPreviewCards error', e);
+      return [];
+    }
+  }
+
   async saveRoundResult(userId: string, card: GameCard, correct: boolean) {
     if (userId.startsWith('guest')) return;
 

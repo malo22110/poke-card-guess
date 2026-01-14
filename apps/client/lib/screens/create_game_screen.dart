@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -21,6 +22,11 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
   List<dynamic> _availableSets = [];
   List<String> _availableRarities = [];
   List<String> _selectedRarities = [];
+  
+  // Preview State
+  List<dynamic> _previewCards = [];
+  bool _isLoadingPreview = false;
+  Timer? _debounce;
   
   // Game Modes State
   List<dynamic> _gameModes = [];
@@ -106,6 +112,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     _tabController.dispose();
     super.dispose();
@@ -200,24 +207,80 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
     }
   }
 
+  void _debouncedFetchPreview() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 800), _fetchPreviewCards);
+  }
+
+  Future<void> _fetchPreviewCards() async {
+    if (!mounted) return;
+    
+    // Don't fetch if filter is invalid (no sets, etc, unless filtering rules allow empty sets = all?)
+    // GameService supports empty sets to mean filtered by rarity only? No, getPreviewCards checks. 
+    // And if sets is not empty.
+    
+    setState(() {
+      _isLoadingPreview = true;
+    });
+
+    try {
+      final body = {
+        'sets': _selectedSetIds,
+        'rarities': _selectedRarities,
+      };
+
+      final response = await http.post(
+        Uri.parse('http://localhost:3000/game/preview-cards'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) {
+          setState(() {
+            _previewCards = jsonDecode(response.body);
+            _isLoadingPreview = false;
+          });
+        }
+      } else {
+        throw Exception('Failed to load preview');
+      }
+    } catch (e) {
+      print('Preview fetch error: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingPreview = false; 
+          // Keep old preview or clear? defaulting to keeping or empty
+          // _previewCards = []; 
+        });
+      }
+    }
+  }
+
   void _selectSpecialRarities() {
     setState(() {
       _selectedRarities = _availableRarities
           .where((rarity) => !_commonRarities.contains(rarity))
           .toList();
     });
+    _debouncedFetchPreview();
   }
 
   void _selectAllRarities() {
     setState(() {
       _selectedRarities = List.from(_availableRarities);
     });
+    _debouncedFetchPreview();
   }
 
   void _clearRarities() {
     setState(() {
       _selectedRarities = [];
     });
+    _debouncedFetchPreview();
   }
 
   Future<void> _createGame() async {
@@ -490,7 +553,107 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
           const SizedBox(height: 32),
 
 
+          // Preview Section
+          if (_selectedSetIds.isNotEmpty) ...[
+             _buildSectionTitle('Card Preview'),
+             const SizedBox(height: 8),
+             Text(
+               'Random sample based on current filters',
+               style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13, fontStyle: FontStyle.italic),
+             ),
+             const SizedBox(height: 16),
+             _buildPreviewSection(),
+             const SizedBox(height: 32),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildPreviewSection() {
+    if (_isLoadingPreview) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+           color: Colors.black.withOpacity(0.2),
+           borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+               CircularProgressIndicator(color: Colors.white),
+               SizedBox(height: 12),
+               Text('Loading preview...', style: TextStyle(color: Colors.white70)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_previewCards.isEmpty) {
+      return Container(
+        height: 150,
+        width: double.infinity,
+        decoration: BoxDecoration(
+           color: Colors.black.withOpacity(0.2),
+           borderRadius: BorderRadius.circular(16),
+           border: Border.all(color: Colors.white12),
+        ),
+        child: Column(
+           mainAxisAlignment: MainAxisAlignment.center,
+           children: [
+              const Icon(Icons.style, color: Colors.white24, size: 48),
+              const SizedBox(height: 8),
+              Text(
+                'No cards found matching filters',
+                style: TextStyle(color: Colors.white.withOpacity(0.5)),
+              ),
+           ],
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 220,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _previewCards.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final card = _previewCards[index];
+          return Container(
+            width: 150,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white24),
+            ),
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      card['image'] ?? '',
+                      fit: BoxFit.contain,
+                      errorBuilder: (c, o, s) => Container(color: Colors.grey, child: const Icon(Icons.broken_image)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  card['name'] ?? 'Unknown',
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -734,6 +897,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
                 _selectedSetIds.add(set['id']);
               }
             });
+            _debouncedFetchPreview();
           },
           child: Container(
             decoration: BoxDecoration(
@@ -943,6 +1107,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
                       _selectedRarities.remove(rarity);
                     }
                   });
+                  _debouncedFetchPreview();
                 },
                 backgroundColor: isCommon 
                     ? Colors.grey.withOpacity(0.3)

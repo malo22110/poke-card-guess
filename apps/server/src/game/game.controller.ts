@@ -151,4 +151,14 @@ export class GameController {
   async getRarities() {
     return await this.gameService.getAvailableRarities();
   }
+  @Post('preview-cards')
+  @UseGuards(OptionalJwtAuthGuard)
+  async getPreviewCards(
+    @Body() body: { sets?: string[]; rarities?: string[] },
+  ) {
+    return this.gameService.getPreviewCards(
+      body.sets || [],
+      body.rarities || [],
+    );
+  }
 }
