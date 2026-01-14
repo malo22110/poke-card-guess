@@ -5,6 +5,7 @@ class Scoreboard extends StatelessWidget {
   final String? currentUserId;
   final Map<String, String>? playerStatuses;
   final Map<String, String>? playerNames;
+  final VoidCallback? onShare;
 
   const Scoreboard({
     super.key,
@@ -12,6 +13,7 @@ class Scoreboard extends StatelessWidget {
     this.currentUserId,
     this.playerStatuses,
     this.playerNames,
+    this.onShare,
   });
 
   @override
@@ -125,6 +127,34 @@ class Scoreboard extends StatelessWidget {
                                 ),
                               ),
                             ),
+                            if (isCurrentUser && onShare != null) ...[
+                               const SizedBox(width: 8),
+                               InkWell(
+                                 onTap: onShare,
+                                 child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.purple,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.white24),
+                                  ),
+                                  child: Row(
+                                    children: const [
+                                      Icon(Icons.share, size: 12, color: Colors.white),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Share', 
+                                        style: TextStyle(
+                                          color: Colors.white, 
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold
+                                        )
+                                      ),
+                                    ],
+                                  ),
+                                 ),
+                               ),
+                            ],
                             const Spacer(),
                             _buildStatusIcon(playerStatuses?[playerId]),
                           ],

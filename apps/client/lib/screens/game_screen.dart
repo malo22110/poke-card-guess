@@ -1,17 +1,23 @@
 import 'dart:convert';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pokecardguess/config/app_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import 'dart:async';
+import 'dart:typed_data';
+import 'package:screenshot/screenshot.dart';
+import 'package:universal_html/html.dart' as html;
+
 import '../widgets/game/game_header.dart';
 import '../widgets/game/card_display.dart';
 import '../widgets/game/guess_input.dart';
 import '../widgets/game/result_display.dart';
 import '../widgets/game/scoreboard.dart';
+import '../widgets/game/story_share_card.dart';
 import '../services/game_socket_service.dart';
-import 'dart:async';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -41,6 +47,7 @@ class _GameScreenState extends State<GameScreen> {
   bool? _isCorrect;
 
   final _socketService = GameSocketService();
+  final ScreenshotController _screenshotController = ScreenshotController();
   StreamSubscription? _roundSub;
   StreamSubscription? _guessResultSub;
   StreamSubscription? _scoreboardSub;
@@ -49,6 +56,160 @@ class _GameScreenState extends State<GameScreen> {
   Timer? _countdownTimer;
   int _remainingSeconds = 30;
   static const int _roundDuration = 30;
+
+
+  void _shareSystem(Uint8List image) async {
+    try {
+      final xFile = XFile.fromData(
+        image,
+        name: 'pokecardguess_story.png',
+        mimeType: 'image/png',
+      );
+      
+      await Share.shareXFiles(
+        [xFile],
+        text: 'I just scored $score points in PokeCardGuess! Can you beat me? 🃏✨ #Pokemon #PokeCardGuess ${AppConfig.clientUrl}',
+      );
+    } catch (e) {
+      debugPrint('Error sharing: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sharing: $e')),
+      );
+    }
+  }
+
+  Future<void> _shareStoryImage() async {
+    try {
+      if (score == 0 && _cardHistory.isEmpty) return;
+
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // Precache assets to ensure they appear in screenshot
+      if (mounted) {
+        await precacheImage(const AssetImage('assets/images/landscape.png'), context);
+        await precacheImage(const AssetImage('assets/images/pokecardguess.png'), context);
+      }
+
+      // Capture the off-screen widget
+      final image = await _screenshotController.captureFromWidget(
+        Material(
+          child: StoryShareCard(
+            score: score,
+            cardHistory: _cardHistory,
+            userName: _playerNames[_guestId ?? ''] ?? 'Guest',
+            userPicture: null, 
+          ),
+        ),
+        delay: const Duration(milliseconds: 1000), // Increased delay for Web asset loading
+        pixelRatio: 2.0,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+
+      // Show Preview Dialog
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: Colors.indigo.shade900,
+          title: const Text('Share Story', style: TextStyle(color: Colors.white)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.7,
+                    maxWidth: 600,
+                  ),
+                  child: Image.memory(image),
+                ),
+                const SizedBox(height: 20),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () {
+                         _downloadImage(image);
+                         Navigator.pop(ctx);
+                      },
+                      icon: const Icon(Icons.download),
+                      label: const Text('Download Image'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                         _shareSystem(image);
+                         Navigator.pop(ctx);
+                      },
+                      icon: const Icon(Icons.share),
+                      label: const Text('Share via System'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                         _shareOnX();
+                         Navigator.pop(ctx);
+                      },
+                      icon: const FaIcon(FontAwesomeIcons.xTwitter, size: 16),
+                      label: const Text('Post Score on X'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+    } catch (e) {
+      if (mounted && Navigator.canPop(context)) Navigator.pop(context); // Close loading if active
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error generating image: $e')),
+        );
+      }
+    }
+  }
+
+  void _downloadImage(Uint8List image) {
+      final blob = html.Blob([image]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', 'pokecardguess_story.png')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Image saved! Ready to post on Instagram stories! 📸')),
+      );
+  }
+
+  void _shareOnX() {
+      final text = Uri.encodeComponent('I just scored $score points in PokeCardGuess! Can you beat me? 🃏✨\n\nPlay now: ${AppConfig.clientUrl}\n\n#Pokemon #PokeCardGuess');
+      final url = Uri.parse('https://x.com/intent/post?text=$text');
+      launchUrl(url, mode: LaunchMode.externalApplication);
+  }
   
   // Scoreboard and waiting state
   Map<String, int> _scores = {};
@@ -535,6 +696,7 @@ class _GameScreenState extends State<GameScreen> {
               scores: _scores,
               currentUserId: _guestId,
               playerNames: _playerNames,
+              onShare: _shareStoryImage,
             ),
           const SizedBox(height: 24),
           
@@ -682,22 +844,6 @@ class _GameScreenState extends State<GameScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  final text = Uri.encodeComponent('I just scored $score points in PokeCardGuess! Can you beat me? 🃏✨\n\nPlay now: ${AppConfig.clientUrl}\n\n#Pokemon #PokeCardGuess');
-                  final url = Uri.parse('https://x.com/intent/post?text=$text');
-                  launchUrl(url, mode: LaunchMode.externalApplication);
-                },
-                icon: const FaIcon(FontAwesomeIcons.xTwitter, size: 16, color: Colors.white),
-                label: const Text('Share on X', style: TextStyle(color: Colors.white)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ),
-              const SizedBox(width: 16),
               ElevatedButton.icon(
                 onPressed: () {
                   Navigator.of(context).pushNamedAndRemoveUntil('/lobby', (route) => false);
