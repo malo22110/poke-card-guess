@@ -4,6 +4,7 @@ import 'screens/login_screen.dart';
 import 'screens/lobby_screen.dart';
 import 'screens/create_game_screen.dart';
 import 'screens/waiting_room_screen.dart';
+import 'screens/auth_callback_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -22,18 +23,9 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _checkAuth();
   }
 
-  void _checkAuth() {
-    final uri = Uri.base;
-    if (uri.queryParameters.containsKey('token')) {
-      setState(() {
-        _authToken = uri.queryParameters['token'];
-      });
-      print('Logged in with token: $_authToken');
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +62,11 @@ class _MyAppState extends State<MyApp> {
             return MaterialPageRoute(builder: (_) => const CreateGameScreen(), settings: newSettings);
           case '/waiting-room':
             return MaterialPageRoute(builder: (_) => const WaitingRoomScreen(), settings: newSettings);
+          case '/auth_callback':
+            return MaterialPageRoute(
+              builder: (_) => AuthCallbackScreen(token: args['token'] ?? ''), 
+              settings: newSettings
+            );
         }
         return null;
       },
