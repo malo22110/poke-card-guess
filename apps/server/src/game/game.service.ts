@@ -119,7 +119,8 @@ export class GameService {
     newLobby.cards = await this.fetchGameCards(newLobby.config);
 
     this.lobbies.set(lobbyId, newLobby);
-    return newLobby;
+    // Hide cards from client to prevent cheating
+    return { ...newLobby, cards: [] };
   }
 
   // --- Lobby Management ---
@@ -144,7 +145,7 @@ export class GameService {
       lobby.scores.set(userId, 0); // Initialize score for new player
     }
 
-    return lobby;
+    return { ...lobby, cards: [] }; // Hide cards
   }
 
   getLobby(lobbyId: string): GameLobby | undefined {
