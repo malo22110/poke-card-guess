@@ -10,6 +10,8 @@ import 'screens/profile_setup_screen.dart';
 import 'screens/terms_and_conditions_screen.dart';
 import 'screens/leaderboard_screen.dart';
 
+import 'services/auth_storage_service.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -23,16 +25,38 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String? _authToken;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _loadSession();
   }
 
-
+  Future<void> _loadSession() async {
+    final token = await AuthStorageService().getToken();
+    if (mounted) {
+      setState(() {
+        _authToken = token;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Directionality(
+        textDirection: TextDirection.ltr,
+        child: ColoredBox(
+          color: Colors.white,
+          child: Center(
+            child: CircularProgressIndicator(color: Colors.deepPurple),
+          ),
+        ),
+      );
+    }
+
     return MaterialApp(
       title: 'PokeCardGuess',
       debugShowCheckedModeBanner: false,
@@ -48,6 +72,11 @@ class _MyAppState extends State<MyApp> {
         final initialArgs = (settings.arguments as Map<String, dynamic>?) ?? <String, dynamic>{};
         final args = Map<String, dynamic>.from(initialArgs);
         args.addAll(uri.queryParameters);
+        
+        // Inject stored auth token if missing
+        if (args['authToken'] == null && _authToken != null) {
+          args['authToken'] = _authToken;
+        }
         
         // Type conversion for boolean flags from URL
         if (args['isHost'] == 'true') args['isHost'] = true;

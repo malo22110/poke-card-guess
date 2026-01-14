@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/auth_storage_service.dart';
 
 class AuthCallbackScreen extends StatefulWidget {
   final String token;
@@ -37,8 +38,17 @@ class _AuthCallbackScreenState extends State<AuthCallbackScreen> {
         },
       );
 
+
       if (response.statusCode == 200) {
         final user = jsonDecode(response.body);
+        
+        // Save session securely
+        await AuthStorageService().saveSession(
+          token: widget.token,
+          userId: user['id']?.toString(),
+          userName: user['name']?.toString(),
+        );
+
         final profileCompleted = user['profileCompleted'] == true;
 
         if (!mounted) return;

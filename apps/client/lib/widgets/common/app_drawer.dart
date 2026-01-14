@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/auth_storage_service.dart';
 
 class AppDrawer extends StatelessWidget {
   final String? authToken;
@@ -67,9 +68,12 @@ class AppDrawer extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.redAccent),
               title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).pushReplacementNamed('/login');
+              onTap: () async {
+                await AuthStorageService().clearSession();
+                if (context.mounted) {
+                   Navigator.pop(context);
+                   Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                }
               },
             ),
           ],
