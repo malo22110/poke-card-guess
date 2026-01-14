@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class TrophiesService {
@@ -47,7 +47,7 @@ export class TrophiesService {
 
     const allTrophies = await this.getAllTrophies();
     const unlockedTrophyIds = new Set(user.trophies.map((ut) => ut.trophyId));
-    const newlyUnlocked = [];
+    const newlyUnlocked: any[] = [];
 
     for (const trophy of allTrophies) {
       if (unlockedTrophyIds.has(trophy.id)) {
