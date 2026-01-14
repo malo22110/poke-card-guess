@@ -26,9 +26,18 @@ model User {
   totalScore    Int @default(0)
   totalAttempts Int @default(0)
   
+  // Trophy tracking
+  gamesPlayed     Int @default(0)
+  gamesWon        Int @default(0)
+  currentStreak   Int @default(0)
+  bestStreak      Int @default(0)
+  cardsGuessed    Int @default(0)
+  sharesCount     Int @default(0)
+  
   createdGameModes GameMode[]
   upvotes          GameModeUpvote[]
   gameSessions     GameSession[]
+  trophies         UserTrophy[]
   
   socials          String? // JSON string
 }
@@ -83,4 +92,32 @@ model GameSession {
   maxScore    Int      // Maximum possible score for this session
   rounds      Int
   playedAt    DateTime @default(now())
+}
+
+model Trophy {
+  id          String   @id @default(uuid())
+  key         String   @unique // e.g., "first_steps", "card_master"
+  name        String   // Display name
+  description String   // Trophy description
+  category    String   // "score", "games", "wins", "streak", "cards", "special"
+  tier        String   // "bronze", "silver", "gold", "diamond", "special"
+  icon        String   // Font Awesome icon name or emoji
+  requirement Int      // Required value to unlock
+  createdAt   DateTime @default(now())
+  
+  userTrophies UserTrophy[]
+}
+
+model UserTrophy {
+  id          String   @id @default(uuid())
+  userId      String
+  trophyId    String
+  unlockedAt  DateTime @default(now())
+  progress    Int      @default(0) // Current progress toward trophy
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trophy      Trophy   @relation(fields: [trophyId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, trophyId])
+  @@index([userId])
 }
