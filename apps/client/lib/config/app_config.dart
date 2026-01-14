@@ -8,4 +8,9 @@ class AppConfig {
     'SOCKET_URL',
     defaultValue: 'http://localhost:3000',
   );
+
+  static const String clientUrl = String.fromEnvironment(
+    'CLIENT_URL',
+    defaultValue: 'http://localhost:8080',
+  );
 }

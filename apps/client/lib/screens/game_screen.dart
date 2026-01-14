@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pokecardguess/config/app_config.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../widgets/game/game_header.dart';
 import '../widgets/game/card_display.dart';
@@ -680,6 +682,22 @@ class _GameScreenState extends State<GameScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  final text = Uri.encodeComponent('I just scored $score points in PokeCardGuess! Can you beat me? 🃏✨\n\nPlay now: ${AppConfig.clientUrl}\n\n#Pokemon #PokeCardGuess');
+                  final url = Uri.parse('https://x.com/intent/post?text=$text');
+                  launchUrl(url, mode: LaunchMode.externalApplication);
+                },
+                icon: const FaIcon(FontAwesomeIcons.xTwitter, size: 16, color: Colors.white),
+                label: const Text('Share on X', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+              const SizedBox(width: 16),
               ElevatedButton.icon(
                 onPressed: () {
                   Navigator.of(context).pushNamedAndRemoveUntil('/lobby', (route) => false);
