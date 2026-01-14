@@ -551,68 +551,82 @@ class _GameScreenState extends State<GameScreen> {
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Scoreboard
-            if (_scores.isNotEmpty)
-              Scoreboard(
-                scores: _scores,
-                currentUserId: _guestId,
+            // Main game content (left side)
+            Expanded(
+              flex: 3,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CardDisplay(
+                    showFullCard: showFullCard,
+                    croppedImage: _croppedImage,
+                    fullImageUrl: _fullImageUrl,
+                  ),
+                  const SizedBox(height: 24),
+                  // Show waiting message if user gave up
+                  if (_isWaitingForRoundEnd && !showFullCard)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Waiting for round to end...',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (!showFullCard)
+                    GuessInput(
+                      controller: _guessController,
+                      onGuessSubmitted: checkGuess,
+                      onGiveUp: giveUp,
+                    )
+                  else
+                    ResultDisplay(
+                      isCorrect: _isCorrect,
+                      revealedName: _revealedName,
+                      revealedSet: _revealedSet,
+                      onNextCard: nextCard,
+                      showNextButton: _currentRound < _totalRounds,
+                    ),
+                ],
               ),
-            const SizedBox(height: 16),
-            CardDisplay(
-              showFullCard: showFullCard,
-              croppedImage: _croppedImage,
-              fullImageUrl: _fullImageUrl,
             ),
-            const SizedBox(height: 24),
-            // Show waiting message if user gave up
-            if (_isWaitingForRoundEnd && !showFullCard)
+            
+            // Scoreboard (right side)
+            if (_scores.isNotEmpty) ...[
+              const SizedBox(width: 20),
               Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                width: 250,
+                child: Scoreboard(
+                  scores: _scores,
+                  currentUserId: _guestId,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Waiting for round to end...',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else if (!showFullCard)
-              GuessInput(
-                controller: _guessController,
-                onGuessSubmitted: checkGuess,
-                onGiveUp: giveUp,
-              )
-            else
-              ResultDisplay(
-                isCorrect: _isCorrect,
-                revealedName: _revealedName,
-                revealedSet: _revealedSet,
-                onNextCard: nextCard,
-                showNextButton: _currentRound < _totalRounds,
               ),
+            ],
           ],
         ),
       ),
