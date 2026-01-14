@@ -45,12 +45,32 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
         fontFamily: 'Roboto',
       ),
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/game': (context) => const GameScreen(),
-        '/lobby': (context) => const LobbyScreen(),
-        '/create-game': (context) => const CreateGameScreen(),
-        '/waiting-room': (context) => const WaitingRoomScreen(),
+      onGenerateRoute: (settings) {
+        final uri = Uri.parse(settings.name ?? '/');
+        
+        // Merge arguments from URL query params and internal navigation args
+        final args = (settings.arguments as Map<String, dynamic>?) ?? <String, dynamic>{};
+        args.addAll(uri.queryParameters);
+        
+        // Type conversion for boolean flags from URL
+        if (args['isHost'] == 'true') args['isHost'] = true;
+        if (args['isHost'] == 'false') args['isHost'] = false;
+
+        final newSettings = RouteSettings(name: settings.name, arguments: args);
+
+        switch (uri.path) {
+          case '/login':
+            return MaterialPageRoute(builder: (_) => const LoginScreen(), settings: newSettings);
+          case '/game':
+            return MaterialPageRoute(builder: (_) => const GameScreen(), settings: newSettings);
+          case '/lobby':
+            return MaterialPageRoute(builder: (_) => LobbyScreen(authToken: args['authToken']), settings: newSettings);
+          case '/create-game':
+            return MaterialPageRoute(builder: (_) => const CreateGameScreen(), settings: newSettings);
+          case '/waiting-room':
+            return MaterialPageRoute(builder: (_) => const WaitingRoomScreen(), settings: newSettings);
+        }
+        return null;
       },
       home: _authToken != null ? LobbyScreen(authToken: _authToken) : const LoginScreen(),
     );

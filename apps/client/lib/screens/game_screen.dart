@@ -100,6 +100,12 @@ class _GameScreenState extends State<GameScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    if (args == null || args['lobbyId'] == null) {
+       WidgetsBinding.instance.addPostFrameCallback((_) => Navigator.of(context).pushReplacementNamed('/lobby'));
+       return;
+    }
+
     if (args != null) {
       _lobbyId = args['lobbyId'];
       _guestId = args['guestId'];

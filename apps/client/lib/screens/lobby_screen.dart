@@ -79,12 +79,15 @@ class _LobbyScreenState extends State<LobbyScreen> {
         final data = jsonDecode(response.body);
         final guestId = data['guestId']; // Extract guestId from join response
         
-        Navigator.of(context).pushNamed('/waiting-room', arguments: {
+        final uri = Uri(path: '/waiting-room', queryParameters: {
           'lobbyId': lobbyId,
-          'isHost': false,
-          'authToken': widget.authToken,
-          'guestId': guestId, // Pass the joined user's guestId (if they are a guest)
+          'isHost': 'false',
+          if (guestId != null) 'guestId': guestId.toString(),
         });
+        Navigator.of(context).pushNamed(
+          uri.toString(), 
+          arguments: {'authToken': widget.authToken}
+        );
       } else {
         throw Exception('Failed to join game: ${response.body}');
       }
@@ -96,12 +99,14 @@ class _LobbyScreenState extends State<LobbyScreen> {
   }
 
   void _navigateToGame(String lobbyId, {required bool isHost}) {
-    Navigator.of(context).pushNamed('/waiting-room', arguments: {
+    final uri = Uri(path: '/waiting-room', queryParameters: {
       'lobbyId': lobbyId,
-      'isHost': isHost,
-      'authToken': widget.authToken,
-      // 'guestId': ... we need this if we are a guest joining!
+      'isHost': isHost.toString(),
     });
+    Navigator.of(context).pushNamed(
+      uri.toString(),
+      arguments: {'authToken': widget.authToken}
+    );
   }
 
   void _showCreateGameDialog() {

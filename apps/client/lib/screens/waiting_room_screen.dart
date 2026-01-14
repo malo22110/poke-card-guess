@@ -39,14 +39,20 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args != null) {
+    
+    if (args != null && args['lobbyId'] != null) {
       lobbyId = args['lobbyId'];
-      isHost = args['isHost'];
+      isHost = args['isHost'] == true; // Ensure bool
       authToken = args['authToken'];
       guestId = args['guestId']; 
 
       _initSocket();
       _fetchLobbyDetails();
+    } else {
+      // Redirect to lobby if accessed without ID
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushReplacementNamed('/lobby');
+      });
     }
   }
 
@@ -125,12 +131,16 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   }
 
   void _navigateToGame() {
-    Navigator.of(context).pushReplacementNamed('/game', arguments: {
+    final uri = Uri(path: '/game', queryParameters: {
       'lobbyId': lobbyId,
-      'isHost': isHost,
-      'authToken': authToken,
-      'guestId': guestId,
+      'isHost': isHost.toString(),
+      if (guestId != null) 'guestId': guestId.toString(),
     });
+
+    Navigator.of(context).pushReplacementNamed(
+      uri.toString(), 
+      arguments: {'authToken': authToken}
+    );
   }
 
   @override

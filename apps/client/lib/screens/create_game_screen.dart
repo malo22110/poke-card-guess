@@ -194,12 +194,15 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
         final guestId = data['hostId']; // Extract guest ID if available
         
         if (mounted) {
-           Navigator.of(context).pushReplacementNamed('/waiting-room', arguments: {
-              'lobbyId': lobbyId,
-               'isHost': true,
-               'authToken': widget.authToken,
-               'guestId': guestId, // Pass guest ID
+           final uri = Uri(path: '/waiting-room', queryParameters: {
+             'lobbyId': lobbyId.toString(),
+             'isHost': 'true',
+             if (guestId != null) 'guestId': guestId.toString(),
            });
+           Navigator.of(context).pushReplacementNamed(
+             uri.toString(), 
+             arguments: {'authToken': widget.authToken}
+           );
         }
       } else {
         throw Exception('Failed to create game: ${response.body}');
