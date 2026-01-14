@@ -7,8 +7,6 @@ import {
   Get,
   Param,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { Request } from 'express';
 import { GameService } from './game.service';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 
@@ -32,6 +30,7 @@ export class GameController {
       sets?: string[];
       secretOnly?: boolean;
       rarities?: string[];
+      guestName?: string;
     },
     @Req() req: any,
   ) {
@@ -39,28 +38,39 @@ export class GameController {
       ? req.user.id || req.user.userId
       : 'guest-host-' + Math.random().toString(36).substr(2, 9);
 
-    return await this.gameService.createLobby(userId, {
-      rounds: body.rounds,
-      sets: body.sets,
-      secretOnly: body.secretOnly,
-      rarities: body.rarities,
-    });
+    return await this.gameService.createLobby(
+      userId,
+      {
+        rounds: body.rounds,
+        sets: body.sets,
+        secretOnly: body.secretOnly,
+        rarities: body.rarities,
+      },
+      body.guestName,
+    );
   }
 
   @Post('join')
   @UseGuards(OptionalJwtAuthGuard)
-  joinLobby(
-    @Body() body: { lobbyId: string; guestId?: string },
+  async joinLobby(
+    @Body() body: { lobbyId: string; guestId?: string; guestName?: string },
     @Req() req: any,
   ) {
-    const userId = req.user
+    let userId = req.user
       ? req.user.id || req.user.userId
       : body.guestId || 'guest-' + Math.random().toString(36).substr(2, 9);
 
-    // Call service to join
-    const lobby = this.gameService.joinLobby(userId, body.lobbyId);
+    let userName = body.guestName;
 
-    // Return lobby info AND the userId (guestId) if it was generated/used, so frontend can store it
+    // If authenticated and no name provided, we could fetch it, but for now fallback to userId is okay
+    // or we can expect the client to send 'guestName' (which is just 'displayName') even for auth users if we want.
+    // However, since we updated the profile, maybe we should fetch it.
+    // But I haven't injected UsersService here yet.
+
+    // Call service to join
+    const lobby = this.gameService.joinLobby(userId, body.lobbyId, userName);
+
+    // Return lobby info AND the userId (guestId) if it was generated/used
     return {
       ...lobby,
       guestId: !req.user ? userId : undefined,

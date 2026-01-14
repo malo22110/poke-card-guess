@@ -23,6 +23,7 @@ export interface GameLobby {
   id: string;
   hostId: string;
   players: string[]; // User IDs
+  playerNames: Map<string, string>; // userId -> displayName
   config: GameConfig;
   status: 'WAITING' | 'PLAYING' | 'FINISHED';
   currentRound: number;
@@ -67,6 +68,7 @@ export class GameService {
   async createLobby(
     hostId: string,
     config: Partial<GameConfig> = {},
+    hostName?: string,
   ): Promise<GameLobby> {
     const lobbyId = uuidv4().substring(0, 8).toUpperCase(); // Short ID for easier joining
     const newLobby: GameLobby = {
@@ -84,6 +86,7 @@ export class GameService {
       cards: [],
       roundResults: new Map(),
       scores: new Map([[hostId, 0]]), // Initialize host score
+      playerNames: new Map([[hostId, hostName || 'Host']]), // Use provided name or default to Host
       roundStartTime: 0,
       history: new Map(),
     };
@@ -95,7 +98,7 @@ export class GameService {
     return newLobby;
   }
 
-  joinLobby(userId: string, lobbyId: string): GameLobby {
+  joinLobby(userId: string, lobbyId: string, userName?: string): GameLobby {
     const lobby = this.lobbies.get(lobbyId);
     if (!lobby) {
       throw new HttpException('Lobby not found', HttpStatus.NOT_FOUND);
@@ -106,6 +109,7 @@ export class GameService {
     if (!lobby.players.includes(userId)) {
       lobby.players.push(userId);
       lobby.scores.set(userId, 0); // Initialize score
+      lobby.playerNames.set(userId, userName || userId);
     }
     return lobby;
   }
@@ -126,7 +130,7 @@ export class GameService {
     return {
       status: lobby.status,
       players: lobby.players.length,
-      playerList: lobby.players,
+      playerList: lobby.players.map((id) => lobby.playerNames.get(id) || id), // Return names
       hostId: lobby.hostId,
       config: lobby.config,
       scores: Object.fromEntries(lobby.scores), // Convert Map to object

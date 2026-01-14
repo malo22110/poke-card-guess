@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../services/game_socket_service.dart';
+import '../widgets/common/custom_app_bar.dart';
+import '../widgets/common/app_drawer.dart';
 
 class WaitingRoomScreen extends StatefulWidget {
   const WaitingRoomScreen({super.key});
@@ -28,11 +30,13 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   String? _error;
   Map<String, dynamic>? _gameConfig;
 
+  String? _guestName;
+  String? _userName;
+
   @override
   void initState() {
     super.initState();
-    // Socket init moved to didChangeDependencies or we can call fetch here if we had lobbyId
-    // But lobbyId is init in didChangeDependencies.
+    // Socket init moved to didChangeDependencies
   }
 
   @override
@@ -45,6 +49,11 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
       isHost = args['isHost'] == true; // Ensure bool
       authToken = args['authToken'];
       guestId = args['guestId']; 
+      _guestName = args['guestName']; // Read guestName
+
+      if (authToken != null && _userName == null) {
+        _fetchUserProfile();
+      }
 
       _initSocket();
       _fetchLobbyDetails();
@@ -55,6 +64,28 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.of(context).pushReplacementNamed('/lobby');
       });
+    }
+  }
+
+  Future<void> _fetchUserProfile() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/users/me'),
+        headers: {
+          'Authorization': 'Bearer $authToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            _userName = data['name'];
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching profile: $e');
     }
   }
 
@@ -148,6 +179,15 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: CustomAppBar(
+        title: 'WAITING ROOM', 
+        userName: _guestName ?? _userName,
+        onProfilePressed: () {
+             Navigator.of(context).pushNamed('/profile', arguments: {'authToken': authToken});
+        },
+      ),
+      drawer: AppDrawer(authToken: authToken),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -163,6 +203,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  const SizedBox(height: kToolbarHeight),
                   Text(
                     'Lobby: ${lobbyId.isEmpty ? "Loading..." : lobbyId}',
                     style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 2),
@@ -243,7 +284,9 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                                  child: Text(player.substring(0, 1).toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10)),
                                ),
                                label: Text(
-                                   player == guestId || player == authToken  ? 'You ($player)' : player, // Simple check
+                                   (player == guestId || player == authToken || player == _guestName || player == _userName) 
+                                     ? 'You ($player)' 
+                                     : player,
                                    style: const TextStyle(fontSize: 12)
                                ),
                                backgroundColor: Colors.white.withOpacity(0.9),

@@ -5,6 +5,9 @@ import 'screens/lobby_screen.dart';
 import 'screens/create_game_screen.dart';
 import 'screens/waiting_room_screen.dart';
 import 'screens/auth_callback_screen.dart';
+import 'screens/profile_screen.dart';
+import 'screens/profile_setup_screen.dart';
+import 'screens/terms_and_conditions_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -67,6 +70,18 @@ class _MyAppState extends State<MyApp> {
               builder: (_) => AuthCallbackScreen(token: args['token'] ?? ''), 
               settings: newSettings
             );
+          case '/profile':
+            return MaterialPageRoute(builder: (_) => ProfileScreen(authToken: args['authToken']), settings: newSettings);
+          case '/profile-setup':
+            return MaterialPageRoute(
+              builder: (_) => ProfileSetupScreen(
+                authToken: args['authToken'],
+                isGuest: args['isGuest'] == true || args['isGuest'] == 'true',
+              ), 
+              settings: newSettings
+            );
+          case '/terms':
+            return MaterialPageRoute(builder: (_) => const TermsAndConditionsScreen(), settings: newSettings);
         }
         return null;
       },

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../widgets/footer.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -75,8 +76,11 @@ class LoginScreen extends StatelessWidget {
                   const SizedBox(height: 40),
                   TextButton(
                     onPressed: () {
-                      // Navigate to LobbyScreen directly (Guest mode)
-                      Navigator.of(context).pushReplacementNamed('/lobby');
+                      // Navigate to ProfileSetupScreen to set guest name
+                      Navigator.of(context).pushNamed(
+                        '/profile-setup',
+                        arguments: {'isGuest': 'true'},
+                      );
                     },
                     child: Text(
                       'Continue as Guest',
@@ -92,6 +96,7 @@ class LoginScreen extends StatelessWidget {
           ),
         ),
       ),
+      bottomNavigationBar: const GameFooter(),
     );
   }
 

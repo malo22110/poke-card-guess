@@ -18,6 +18,7 @@ model User {
   provider  String   // 'google' or 'facebook'
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  profileCompleted Boolean @default(false)
   
   games     Game[]
   

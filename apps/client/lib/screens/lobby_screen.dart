@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
+import '../widgets/common/custom_app_bar.dart';
+import '../widgets/common/app_drawer.dart';
+import '../widgets/footer.dart';
 
 class LobbyScreen extends StatefulWidget {
   final String? authToken;
@@ -15,10 +18,58 @@ class _LobbyScreenState extends State<LobbyScreen> {
   final TextEditingController _lobbyIdController = TextEditingController();
   bool _isLoading = false;
   String? _error;
+  String? _guestName;
+  String? _guestAvatar;
 
   double _rounds = 10;
   bool _secretOnly = true;
   final TextEditingController _setIdController = TextEditingController(text: '151');
+
+  String? _userName;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.authToken != null) {
+      _fetchUserProfile();
+    }
+  }
+
+  Future<void> _fetchUserProfile() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/users/me'),
+        headers: {
+          'Authorization': 'Bearer ${widget.authToken}',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _userName = data['name'];
+        });
+      }
+    } catch (e) {
+      print('Error fetching profile: $e');
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null) {
+      if (args.containsKey('guestName')) {
+        setState(() {
+          _guestName = args['guestName'];
+        });
+      }
+      if (args.containsKey('guestAvatar')) {
+        _guestAvatar = args['guestAvatar'];
+      }
+    }
+  }
 
   Future<void> _createGame() async {
     setState(() {
@@ -38,6 +89,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
             'rounds': _rounds.toInt(),
             'sets': [_setIdController.text.trim()],
             'secretOnly': _secretOnly,
+            'guestName': _guestName ?? _userName,
           }
         ),
       );
@@ -45,7 +97,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
         final lobbyId = data['id'];
-        _navigateToGame(lobbyId, isHost: true);
+        final hostId = data['hostId'];
+        _navigateToGame(lobbyId, isHost: true, guestId: hostId);
       } else {
         throw Exception('Failed to create game: ${response.body}');
       }
@@ -72,7 +125,11 @@ class _LobbyScreenState extends State<LobbyScreen> {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${widget.authToken}',
         },
-        body: jsonEncode({'lobbyId': lobbyId}),
+        body: jsonEncode({
+          'lobbyId': lobbyId,
+          'guestName': _guestName,
+          'guestAvatar': _guestAvatar,
+        }),
       );
 
       if (response.statusCode == 201) {
@@ -86,7 +143,11 @@ class _LobbyScreenState extends State<LobbyScreen> {
         });
         Navigator.of(context).pushNamed(
           uri.toString(), 
-          arguments: {'authToken': widget.authToken}
+          arguments: {
+            'authToken': widget.authToken,
+            'guestName': _guestName,
+            'guestAvatar': _guestAvatar,
+          }
         );
       } else {
         throw Exception('Failed to join game: ${response.body}');
@@ -98,14 +159,18 @@ class _LobbyScreenState extends State<LobbyScreen> {
     }
   }
 
-  void _navigateToGame(String lobbyId, {required bool isHost}) {
+  void _navigateToGame(String lobbyId, {required bool isHost, String? guestId}) {
     final uri = Uri(path: '/waiting-room', queryParameters: {
       'lobbyId': lobbyId,
       'isHost': isHost.toString(),
     });
     Navigator.of(context).pushNamed(
       uri.toString(),
-      arguments: {'authToken': widget.authToken}
+      arguments: {
+        'authToken': widget.authToken,
+        'guestName': _guestName,
+        'guestAvatar': _guestAvatar,
+      }
     );
   }
 
@@ -185,6 +250,15 @@ class _LobbyScreenState extends State<LobbyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: CustomAppBar(
+        title: 'POKÉ CARD GUESS',
+        userName: _guestName ?? _userName,
+        onProfilePressed: () {
+          Navigator.of(context).pushNamed('/profile', arguments: {'authToken': widget.authToken});
+        },
+      ),
+      drawer: AppDrawer(authToken: widget.authToken),
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
@@ -202,6 +276,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
+                  const SizedBox(height: kToolbarHeight + 16),
                   Image.asset(
                     'assets/images/pokecardguess.png',
                     height: 300,
@@ -234,7 +309,9 @@ class _LobbyScreenState extends State<LobbyScreen> {
                     ElevatedButton(
                       onPressed: _isLoading ? null : () {
                         Navigator.of(context).pushNamed('/create-game', arguments: {
-                          'authToken': widget.authToken
+                          'authToken': widget.authToken,
+                          'guestName': _guestName,
+                          'guestAvatar': _guestAvatar,
                         });
                       },
                       style: ElevatedButton.styleFrom(
@@ -304,6 +381,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
       ),
     ),
   ),
+  bottomNavigationBar: const GameFooter(),
 );
   }
 }
