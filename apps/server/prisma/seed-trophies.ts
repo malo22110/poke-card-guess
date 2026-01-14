@@ -501,6 +501,44 @@ const trophies = [
     icon: '⚡',
     requirement: 5,
   },
+
+  // Donation Trophies (4)
+  {
+    key: 'supporter',
+    name: 'Supporter',
+    description: 'Make your first donation',
+    category: 'donation',
+    tier: 'bronze',
+    icon: '💝',
+    requirement: 1,
+  },
+  {
+    key: 'generous',
+    name: 'Generous',
+    description: 'Donate $5 or more',
+    category: 'donation',
+    tier: 'silver',
+    icon: '💝',
+    requirement: 5,
+  },
+  {
+    key: 'patron',
+    name: 'Patron',
+    description: 'Donate $20 or more',
+    category: 'donation',
+    tier: 'gold',
+    icon: '💝',
+    requirement: 20,
+  },
+  {
+    key: 'benefactor',
+    name: 'Benefactor',
+    description: 'Donate $50 or more',
+    category: 'donation',
+    tier: 'diamond',
+    icon: '💝',
+    requirement: 50,
+  },
 ];
 
 async function main() {

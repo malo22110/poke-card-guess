@@ -94,6 +94,13 @@ Implement a trophy/achievement system to increase engagement and provide goals f
 - **Speedrunner** - Complete a 10-round game in under 3 minutes (Gold)
 - **Time Attack Master** - Average under 5 seconds per guess over 20 games (Diamond)
 
+### 💝 Donation Trophies
+
+- **Supporter** - Make your first donation (Bronze)
+- **Generous** - Donate $5 or more (Silver)
+- **Patron** - Donate $20 or more (Gold)
+- **Benefactor** - Donate $50 or more (Diamond)
+
 ## Database Schema
 
 ### Trophy Model

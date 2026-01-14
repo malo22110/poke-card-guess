@@ -33,6 +33,7 @@ model User {
   bestStreak      Int @default(0)
   cardsGuessed    Int @default(0)
   sharesCount     Int @default(0)
+  totalDonated    Int @default(0) // Total amount donated in cents
   
   createdGameModes GameMode[]
   upvotes          GameModeUpvote[]

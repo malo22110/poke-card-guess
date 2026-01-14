@@ -96,6 +96,10 @@ export class TrophiesService {
       case 'social':
         return user.sharesCount >= requirement;
 
+      case 'donation':
+        // requirement is in dollars, totalDonated is in cents
+        return user.totalDonated >= requirement * 100;
+
       case 'special':
         return await this.checkSpecialTrophy(user, key, requirement);
 
