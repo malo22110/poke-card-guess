@@ -203,7 +203,7 @@ export class GameModesService {
       take: 50,
       include: {
         user: {
-          select: { name: true, picture: true },
+          select: { name: true, picture: true, socials: true },
         },
       },
     });

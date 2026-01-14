@@ -14,12 +14,31 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   String _userName = 'Loading...';
+  String? _userPicture;
+  Map<String, dynamic> _socials = {};
   bool _isLoading = true;
+  bool _isSaving = false;
+
+  final TextEditingController _instagramController = TextEditingController();
+  final TextEditingController _tiktokController = TextEditingController();
+  final TextEditingController _marketplaceController = TextEditingController();
+  final TextEditingController _facebookController = TextEditingController();
+  final TextEditingController _xController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fetchUserProfile();
+  }
+
+  @override
+  void dispose() {
+    _instagramController.dispose();
+    _tiktokController.dispose();
+    _marketplaceController.dispose();
+    _facebookController.dispose();
+    _xController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchUserProfile() async {
@@ -41,9 +60,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        
+        Map<String, dynamic> loadedSocials = {};
+        if (data['socials'] != null) {
+           try {
+             loadedSocials = jsonDecode(data['socials']);
+           } catch (e) {
+             print('Error parsing socials JSON: $e');
+           }
+        }
+
         if (mounted) {
           setState(() {
             _userName = data['name'] ?? 'User';
+            _userPicture = data['picture'];
+            _socials = loadedSocials;
+            _instagramController.text = _socials['instagram'] ?? '';
+            _tiktokController.text = _socials['tiktok'] ?? '';
+            // Backward compatibility for 'voggt' if present
+            _marketplaceController.text = _socials['marketplace'] ?? _socials['voggt'] ?? '';
+            _facebookController.text = _socials['facebook'] ?? '';
+            _xController.text = _socials['x'] ?? '';
             _isLoading = false;
           });
         }
@@ -65,30 +102,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _saveProfile() async {
+    setState(() => _isSaving = true);
+
+    final socialsToSave = {
+      'instagram': _instagramController.text.trim(),
+      'tiktok': _tiktokController.text.trim(),
+      'marketplace': _marketplaceController.text.trim(),
+      'facebook': _facebookController.text.trim(),
+      'x': _xController.text.trim(),
+    };
+
+    try {
+      final response = await http.patch(
+        Uri.parse('${AppConfig.apiBaseUrl}/users/profile'),
+        headers: {
+          'Authorization': 'Bearer ${widget.authToken}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'socials': socialsToSave,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile updated successfully!')),
+          );
+        }
+      } else {
+        throw Exception('Failed to update profile');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Error updating profile: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFF1F2937),
         elevation: 0,
         foregroundColor: Colors.white,
       ),
-      extendBodyBehindAppBar: true,
+      extendBodyBehindAppBar: false,
       body: Container(
         decoration: const BoxDecoration(
-          color: Color(0xFF1F2937), // Soft dark gray-blue
+          color: Color(0xFF1F2937),
         ),
-        child: Center(
-          child: _isLoading 
-            ? const CircularProgressIndicator(color: Colors.amber)
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+        child: _isLoading 
+          ? const Center(child: CircularProgressIndicator(color: Colors.amber))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.amber,
-                    child: Icon(Icons.person, size: 50, color: Colors.white),
+                    backgroundImage: _userPicture != null ? NetworkImage(_userPicture!) : null,
+                    child: _userPicture == null ? const Icon(Icons.person, size: 50, color: Colors.white) : null,
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -99,30 +182,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  if (widget.authToken != null)
-                    Text(
-                      'Logged In',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white.withOpacity(0.7),
+                  const SizedBox(height: 32),
+                  
+                  if (widget.authToken != null) ...[
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Social Links', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSocialField('Instagram URL', _instagramController, Icons.camera_alt),
+                    const SizedBox(height: 12),
+                    _buildSocialField('TikTok URL', _tiktokController, Icons.music_note),
+                    const SizedBox(height: 12),
+                    _buildSocialField('Marketplace URL (Vinted, Voggt, eBay...)', _marketplaceController, Icons.store),
+                    const SizedBox(height: 12),
+                    _buildSocialField('Facebook URL', _facebookController, Icons.facebook),
+                    const SizedBox(height: 12),
+                    _buildSocialField('X (Twitter) URL', _xController, Icons.alternate_email),
+                    
+                    const SizedBox(height: 32),
+                    
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : _saveProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: _isSaving 
+                          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)) 
+                          : const Text('Save Changes'),
                       ),
                     ),
-                  const SizedBox(height: 32),
+                    
+                    const SizedBox(height: 24),
+                  ],
+
                   ElevatedButton.icon(
                     onPressed: () {
-                       // Implement logout or back
                        Navigator.of(context).pushReplacementNamed('/login');
                     },
                     icon: const Icon(Icons.logout),
                     label: const Text('Logout'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.redAccent.withOpacity(0.2),
+                      foregroundColor: Colors.redAccent,
+                      elevation: 0,
                     ),
                   )
                 ],
               ),
+            ),
+      ),
+    );
+  }
+
+  Widget _buildSocialField(String label, TextEditingController controller, IconData icon) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+        prefixIcon: Icon(icon, color: Colors.amber),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
       ),
     );

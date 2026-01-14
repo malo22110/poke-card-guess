@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pokecardguess/config/app_config.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   final String? authToken;
@@ -299,10 +301,19 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         final entry = _leaderboard[index];
         final rank = index + 1;
         final user = entry['user'];
-        // Default avatar if none provided (assuming user['picture'] might be a URL or null)
-        // Also handling null user gracefully
         final userName = user?['name'] ?? 'Unknown Player';
         final userPic = user?['picture'];
+        
+        Map<String, dynamic> socials = {};
+        if (user != null && user['socials'] != null) {
+          try {
+             if (user['socials'] is String) {
+               socials = jsonDecode(user['socials']);
+             } else {
+               socials = user['socials'];
+             }
+          } catch (_) {}
+        }
 
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -315,79 +326,119 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               width: index == 0 ? 2 : 0,
             ),
           ),
-          child: Row(
+          child: Column(
             children: [
-              // Rank
-              SizedBox(
-                width: 40,
-                child: Text(
-                  '#$rank',
-                  style: TextStyle(
-                    color: index < 3 ? Colors.amber : Colors.white70,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              
-              const SizedBox(width: 12),
-              
-              // Avatar
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.white24,
-                backgroundImage: userPic != null ? NetworkImage(userPic) : null,
-                child: userPic == null 
-                  ? Text(userName[0].toUpperCase(), style: const TextStyle(color: Colors.white))
-                  : null,
-              ),
-              
-              const SizedBox(width: 16),
-              
-              // Name and Date
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      userName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
+              Row(
+                children: [
+                  // Rank
+                  SizedBox(
+                    width: 40,
+                    child: Text(
+                      '#$rank',
+                      style: TextStyle(
+                        color: index < 3 ? Colors.amber : Colors.white70,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Text(
-                      '${entry['rounds']} rounds', // Maybe format date too?
-                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              
-              // Score
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${entry['score']} pts',
-                    style: const TextStyle(
-                      color: Colors.amber,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  ),
+                  
+                  const SizedBox(width: 12),
+                  
+                  // Avatar
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.white24,
+                    backgroundImage: userPic != null ? NetworkImage(userPic) : null,
+                    child: userPic == null 
+                      ? Text(userName[0].toUpperCase(), style: const TextStyle(color: Colors.white))
+                      : null,
+                  ),
+                  
+                  const SizedBox(width: 16),
+                  
+                  // Name and Date
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          userName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '${entry['rounds']} rounds', 
+                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                        ),
+                      ],
                     ),
                   ),
-                  if (entry['maxScore'] != null)
-                    Text(
-                      'of ${entry['maxScore']}',
-                      style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 10),
-                    ),
+                  
+                  // Score
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${entry['score']} pts',
+                        style: const TextStyle(
+                          color: Colors.amber,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (entry['maxScore'] != null)
+                        Text(
+                          'of ${entry['maxScore']}',
+                          style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 10),
+                        ),
+                    ],
+                  ),
                 ],
               ),
+              
+              if (socials.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(height: 1, color: Colors.white10),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (socials['instagram'] != null && socials['instagram'].isNotEmpty)
+                      _buildSocialIcon(FontAwesomeIcons.instagram, Colors.pinkAccent, socials['instagram']),
+                    if (socials['tiktok'] != null && socials['tiktok'].isNotEmpty)
+                      _buildSocialIcon(FontAwesomeIcons.tiktok, Colors.cyanAccent, socials['tiktok']),
+                    if ((socials['marketplace'] != null && socials['marketplace'].isNotEmpty) || (socials['voggt'] != null && socials['voggt'].isNotEmpty))
+                      _buildSocialIcon(FontAwesomeIcons.shop, Colors.orangeAccent, socials['marketplace'] ?? socials['voggt']),
+                    if (socials['facebook'] != null && socials['facebook'].isNotEmpty)
+                      _buildSocialIcon(FontAwesomeIcons.facebook, Colors.blue, socials['facebook']),
+                    if (socials['x'] != null && socials['x'].isNotEmpty)
+                      _buildSocialIcon(FontAwesomeIcons.xTwitter, Colors.white, socials['x']),
+                  ],
+                ),
+              ],
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSocialIcon(IconData icon, Color color, String url) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 12),
+      child: InkWell(
+        onTap: () async {
+          final uri = Uri.parse(url.startsWith('http') ? url : 'https://$url');
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri);
+          }
+        },
+        child: FaIcon(icon, color: color, size: 20),
+      ),
     );
   }
 }

@@ -29,6 +29,8 @@ model User {
   createdGameModes GameMode[]
   upvotes          GameModeUpvote[]
   gameSessions     GameSession[]
+  
+  socials          String? // JSON string
 }
 
 model Game {

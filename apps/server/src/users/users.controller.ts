@@ -30,18 +30,19 @@ export class UsersController {
   @Patch('profile')
   async updateProfile(
     @Request() req,
-    @Body() body: { name?: string; picture?: string }, // Add more validation in real app
+    @Body()
+    body: { name?: string; picture?: string; socials?: Record<string, string> },
   ): Promise<User> {
     const userId = req.user.userId;
 
-    // Determine if profile is becoming complete
-    // Simple logic: if name is present, we consider it complete or at least "set up"
-    // Ideally we validata fields.
-
     const updateData: any = {
       ...body,
-      profileCompleted: true, // Mark as complete on first update
+      profileCompleted: true,
     };
+
+    if (body.socials) {
+      updateData.socials = JSON.stringify(body.socials);
+    }
 
     return this.usersService.update(userId, updateData);
   }
