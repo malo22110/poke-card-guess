@@ -42,7 +42,10 @@ class SoundService {
       // If we want overlap (e.g. quick successions), we might create a temporary player.
       
       final player = AudioPlayer();
-      await player.play(AssetSource('sounds/$soundName.mp3'), volume: volume);
+      await player.play(
+        AssetSource('sounds/$soundName.mp3', mimeType: 'audio/mpeg'),
+        volume: volume,
+      );
       // We rely on garbage collection or dispose when done... 
       // Actually AudioPlayer needs disposal.
       player.onPlayerComplete.listen((event) {
