@@ -39,6 +39,7 @@ model User {
   uniqueSetsGuessed    String? // JSON array of unique set IDs
   rarityStats          String? // JSON object tracking cards guessed by rarity
   bestRoundScore       Int     @default(0) // Highest score achieved in a single round
+  fastestGuess         Float   @default(999.0) // Fastest time to guess correctly (in seconds)
   
   createdGameModes GameMode[]
   upvotes          GameModeUpvote[]

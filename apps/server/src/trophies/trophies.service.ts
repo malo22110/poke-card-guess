@@ -249,8 +249,8 @@ export class TrophiesService {
     key: string,
     requirement: number,
   ): Promise<boolean> {
-    // TODO: Track game completion times
-    // This requires storing game duration data
-    return false;
+    // Check based on fastest guess time
+    // Requirement is in seconds, lower is better
+    return (user.fastestGuess || 999.0) <= requirement;
   }
 }

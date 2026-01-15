@@ -295,6 +295,9 @@ export class GameService {
           }
           if (userResult.correct) {
             cardsGuessed++;
+            if (userResult.timeTaken < fastestGuessInGame) {
+              fastestGuessInGame = userResult.timeTaken;
+            }
           }
         }
       }
@@ -343,6 +346,7 @@ export class GameService {
             bestStreak: true,
             highScore: true,
             bestRoundScore: true,
+            fastestGuess: true,
           },
         });
 
@@ -375,6 +379,17 @@ export class GameService {
           });
           console.log(
             `User ${userId} new best round score: ${highestRoundScoreInGame}`,
+          );
+        }
+
+        // Update fastest guess
+        if (user && fastestGuessInGame < user.fastestGuess) {
+          await this.prisma.user.update({
+            where: { id: userId },
+            data: { fastestGuess: fastestGuessInGame },
+          });
+          console.log(
+            `User ${userId} new fastest guess: ${fastestGuessInGame}ms`,
           );
         }
 
