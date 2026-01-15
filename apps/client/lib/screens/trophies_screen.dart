@@ -320,7 +320,7 @@ class _TrophiesScreenState extends State<TrophiesScreen> {
                                 return TrophyCard(
                                   trophy: trophy,
                                   isUnlocked: false,
-                                  progress: 0, // TODO: Get actual progress
+                                  progress: trophy.currentProgress ?? 0,
                                 );
                               }
                             },

@@ -8,6 +8,7 @@ class Trophy {
   final String icon;
   final int requirement;
   final DateTime createdAt;
+  final int? currentProgress;
 
   Trophy({
     required this.id,
@@ -19,6 +20,7 @@ class Trophy {
     required this.icon,
     required this.requirement,
     required this.createdAt,
+    this.currentProgress,
   });
 
   factory Trophy.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class Trophy {
       icon: json['icon'] as String,
       requirement: json['requirement'] as int,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      currentProgress: json['progress'] as int?,
     );
   }
 

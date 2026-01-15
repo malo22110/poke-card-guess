@@ -12,6 +12,10 @@ export class TrophiesService {
   }
 
   async getUserTrophies(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
     const unlocked = await this.prisma.userTrophy.findMany({
       where: { userId },
       include: { trophy: true },
@@ -21,7 +25,12 @@ export class TrophiesService {
     const allTrophies = await this.getAllTrophies();
     const unlockedIds = new Set(unlocked.map((ut) => ut.trophyId));
 
-    const locked = allTrophies.filter((t) => !unlockedIds.has(t.id));
+    const locked = allTrophies
+      .filter((t) => !unlockedIds.has(t.id))
+      .map((t) => ({
+        ...t,
+        progress: user ? this.calculateProgress(user, t) : 0,
+      }));
 
     return {
       unlocked,
@@ -29,6 +38,62 @@ export class TrophiesService {
       totalUnlocked: unlocked.length,
       totalTrophies: allTrophies.length,
     };
+  }
+
+  private calculateProgress(user: any, trophy: any): number {
+    switch (trophy.category) {
+      case 'score':
+        return user.totalScore;
+      case 'games':
+        return user.gamesPlayed;
+      case 'wins':
+        return user.gamesWon;
+      case 'streak':
+        return user.bestStreak;
+      case 'cards':
+        return user.cardsGuessed;
+      case 'social':
+        return user.sharesCount;
+      case 'donation':
+        return Math.floor(user.totalDonated / 100);
+      case 'set':
+        try {
+          const uniqueSets = JSON.parse(user.uniqueSetsGuessed || '[]');
+          return Array.isArray(uniqueSets) ? uniqueSets.length : 0;
+        } catch {
+          return 0;
+        }
+      case 'rarity':
+        try {
+          const stats = JSON.parse(user.rarityStats || '{}');
+          let targetRarity = '';
+          if (trophy.key === 'rare_hunter') targetRarity = 'Rare';
+          else if (trophy.key === 'ultra_rare_collector')
+            targetRarity = 'Ultra Rare';
+          else if (trophy.key === 'secret_seeker') targetRarity = 'Secret Rare';
+          return stats[targetRarity] || 0;
+        } catch {
+          return 0;
+        }
+      case 'speed':
+        // For speed, lower is better. Returning current fastest guess.
+        return user.fastestGuess || 0;
+      case 'special':
+        return this.calculateSpecialProgress(user, trophy.key);
+      default:
+        return 0;
+    }
+  }
+
+  private calculateSpecialProgress(user: any, key: string): number {
+    switch (key) {
+      case 'perfect_round':
+        return user.bestRoundScore || 0;
+      case 'personal_best': // Assuming there is a personal best trophy key
+        return user.timesBeatenHighScore || 0;
+      default:
+        return 0;
+    }
   }
 
   async checkAndAwardTrophies(userId: string) {
