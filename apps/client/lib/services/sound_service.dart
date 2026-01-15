@@ -60,6 +60,7 @@ class SoundService extends ChangeNotifier {
   static const String wrong = 'wrong';
   static const String tick = 'tick';
   static const String victory = 'victory';
+  static const String fiasco = 'fiasco';
   static const String gameOver = 'game_over';
   static const String select = 'select';
   static const String reveal = 'reveal';

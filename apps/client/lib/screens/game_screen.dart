@@ -587,7 +587,7 @@ class _GameScreenState extends State<GameScreen> {
       }
       
       if (_remainingSeconds > 0) {
-        if (_remainingSeconds <= 5) {
+        if (_remainingSeconds <= 10) {
           SoundService().playSound(SoundService.tick, volume: 0.5);
         }
         setState(() {
@@ -635,10 +635,17 @@ class _GameScreenState extends State<GameScreen> {
        if (_guestId != null && _scores.isNotEmpty) {
          final myScore = _scores[_guestId] ?? 0;
          final highestScore = _scores.values.reduce((a, b) => a > b ? a : b);
-         if (myScore == highestScore && myScore > 0) {
+         final isWinner = myScore == highestScore && myScore > 0;
+         final isMultiplayer = _scores.length > 1;
+         
+         if (isWinner) {
            SoundService().playSound(SoundService.victory);
+         } else if (isMultiplayer) {
+           // Only play fiasco sound if there are multiple players (not solo)
+           SoundService().playSound(SoundService.fiasco);
          }
        }
+
 
        // Check for unlocked trophies
        if (data['unlockedTrophies'] != null) {
