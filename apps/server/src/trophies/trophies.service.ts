@@ -319,6 +319,19 @@ export class TrophiesService {
         return await this.checkRarityTrophy(user, key, requirement);
 
       case 'creator':
+        // Special handling for community_favorite - check upvotes instead of creation count
+        if (key === 'community_favorite') {
+          const modes = await this.prisma.gameMode.findMany({
+            where: { creatorId: user.id },
+            include: { _count: { select: { upvotes: true } } },
+          });
+          const maxUpvotes = modes.reduce(
+            (max, m) => Math.max(max, m._count.upvotes || 0),
+            0,
+          );
+          return maxUpvotes >= requirement;
+        }
+        // For other creator trophies, check creation count
         return (user._count?.createdGameModes || 0) >= requirement;
 
       case 'set':
