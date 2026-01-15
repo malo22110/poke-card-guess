@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:pokecardguess/config/app_config.dart';
-import 'package:pokecardguess/services/auth_storage_service.dart';
+import '../services/auth_service.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final String? authToken;
@@ -21,42 +22,26 @@ class ProfileSetupScreen extends StatefulWidget {
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final List<String> _avatars = [
-    'assets/images/pokeball.png', // We might need to ensure these exist or use placeholders
-    // For now let's just use simple colors or indices if we don't have assets
+    'assets/images/pokeball.png', 
   ];
-  String _selectedAvatar = 'default'; // Placeholder
+  String _selectedAvatar = 'default'; 
   bool _isLoading = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    if (!widget.isGuest && widget.authToken != null) {
-      _fetchCurrentProfile();
-    }
-  }
-
-  Future<void> _fetchCurrentProfile() async {
-    try {
-      final response = await http.get(
-        Uri.parse('${AppConfig.apiBaseUrl}/users/me'),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['name'] != null && mounted) {
-          setState(() {
-            _usernameController.text = data['name'];
-          });
-        }
-        // Could also pre-fill avatar if we supported URL avatars
+    // Defer access to context until build or post-frame, but Provider listen=false is safe in initState usually?
+    // Actually no, inherited widgets in initState can be tricky.
+    // Better to use WidgetsBinding.instance.addPostFrameCallback
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      if (!widget.isGuest && authService.currentUser != null) {
+         setState(() {
+            _usernameController.text = authService.currentUser!.name;
+         });
       }
-    } catch (e) {
-      print('Failed to fetch current profile: $e');
-    }
+    });
   }
 
   Future<void> _submitProfile() async {
@@ -71,20 +56,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       _error = null;
     });
 
+    final authService = Provider.of<AuthService>(context, listen: false);
+
     try {
       if (widget.isGuest) {
-        // Save guest name to storage
-        await AuthStorageService().saveGuestName(username);
+        await authService.loginAsGuest(username, _selectedAvatar);
         
         if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/lobby', arguments: {
-            'guestName': username,
-            'guestAvatar': _selectedAvatar,
-            // No auth token
-          });
+          Navigator.of(context).pushReplacementNamed('/lobby');
         }
       } else {
-        // Authenticated user: Update backend
         final response = await http.patch(
           Uri.parse('${AppConfig.apiBaseUrl}/users/profile'),
           headers: {
@@ -98,17 +79,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         );
 
         if (response.statusCode == 200 || response.statusCode == 201) {
-           // Update the stored session to mark profile as completed
-           await AuthStorageService().saveSession(
-             token: widget.authToken!,
-             userName: username,
-             profileCompleted: true,
-           );
+           await authService.login(widget.authToken!); 
            
            if (mounted) {
-             Navigator.of(context).pushReplacementNamed('/lobby', arguments: {
-               'authToken': widget.authToken
-             });
+             Navigator.of(context).pushReplacementNamed('/lobby');
            }
         } else {
           throw Exception('Failed to update profile: ${response.body}');

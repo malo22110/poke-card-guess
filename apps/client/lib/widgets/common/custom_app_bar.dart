@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../services/auth_service.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final VoidCallback? onProfilePressed;
   final bool showProfile;
 
-  final String? userName;
-
   const CustomAppBar({
     super.key,
     this.title = 'PokeCardGuess',
     this.onProfilePressed,
     this.showProfile = true,
-    this.userName,
+    @Deprecated('Use AuthService instead') String? userName, 
   });
 
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context);
+    final user = authService.currentUser;
+
     return AppBar(
       title: Text(
         title,
@@ -48,28 +51,32 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         },
       ),
       actions: [
-        if (showProfile)
+        if (showProfile && user != null)
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Row(
               children: [
-                if (userName != null)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: Text(
-                      userName!,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: Text(
+                    user.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
+                ),
                 GestureDetector(
                   onTap: onProfilePressed,
                   child: CircleAvatar(
                     backgroundColor: Colors.amber.withOpacity(0.8),
                     radius: 18,
-                    child: const Icon(Icons.person, color: Colors.white, size: 20),
+                    backgroundImage: user.picture != null 
+                        ? NetworkImage(user.picture!) 
+                        : null,
+                    child: user.picture == null 
+                        ? const Icon(Icons.person, color: Colors.white, size: 20)
+                        : null,
                   ),
                 ),
               ],

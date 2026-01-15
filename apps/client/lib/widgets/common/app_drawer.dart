@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_storage_service.dart';
+import 'package:provider/provider.dart';
+import '../../services/auth_service.dart';
 
 class AppDrawer extends StatelessWidget {
-  final String? authToken;
-
-  const AppDrawer({super.key, this.authToken});
+  const AppDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    
     return Drawer(
       child: Container(
         color: const Color(0xFF1a237e),
@@ -26,8 +27,8 @@ class AppDrawer extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
-                children: const [
-                  Text(
+                children: [
+                   const Text(
                     'Menu',
                     style: TextStyle(
                       color: Colors.white,
@@ -35,6 +36,14 @@ class AppDrawer extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  if (authService.currentUser != null)
+                    Text(
+                      authService.currentUser!.name,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -42,10 +51,8 @@ class AppDrawer extends StatelessWidget {
               leading: const Icon(Icons.home, color: Colors.white),
               title: const Text('Lobby', style: TextStyle(color: Colors.white)),
               onTap: () {
-                Navigator.pop(context); // Close drawer
-                // Check if already on lobby to avoid stack buildup? 
-                // For now just push replacement if we want to reset
-                Navigator.of(context).pushReplacementNamed('/lobby', arguments: {'authToken': authToken});
+                Navigator.pop(context); 
+                Navigator.of(context).pushReplacementNamed('/lobby');
               },
             ),
             ListTile(
@@ -53,7 +60,7 @@ class AppDrawer extends StatelessWidget {
               title: const Text('Profile', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.of(context).pushNamed('/profile', arguments: {'authToken': authToken});
+                Navigator.of(context).pushNamed('/profile');
               },
             ),
             ListTile(
@@ -61,7 +68,7 @@ class AppDrawer extends StatelessWidget {
               title: const Text('Trophies', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.of(context).pushNamed('/trophies', arguments: {'authToken': authToken});
+                Navigator.of(context).pushNamed('/trophies');
               },
             ),
             ListTile(
@@ -69,7 +76,7 @@ class AppDrawer extends StatelessWidget {
               title: const Text('Leaderboard', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.of(context).pushNamed('/leaderboard', arguments: {'authToken': authToken});
+                Navigator.of(context).pushNamed('/leaderboard');
               },
             ),
              ListTile(
@@ -85,7 +92,7 @@ class AppDrawer extends StatelessWidget {
               leading: const Icon(Icons.logout, color: Colors.redAccent),
               title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
               onTap: () async {
-                await AuthStorageService().clearSession();
+                await authService.logout();
                 if (context.mounted) {
                    Navigator.pop(context);
                    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
