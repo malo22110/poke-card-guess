@@ -40,194 +40,137 @@ class TrophyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tierColor = _getTierColor();
     final isLocked = !isUnlocked;
-    
+
     return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isLocked
-              ? [
-                  Colors.grey.shade800,
-                  Colors.grey.shade900,
-                ]
-              : [
-                  tierColor.withOpacity(0.2),
-                  tierColor.withOpacity(0.1),
-                ],
-        ),
-        borderRadius: BorderRadius.circular(16),
+        color: isLocked ? const Color(0xFF1E1E1E) : tierColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: isLocked ? Colors.grey.shade700 : tierColor,
-          width: 2,
+          color: isLocked ? Colors.white10 : tierColor.withOpacity(0.2),
+          width: 0.5,
         ),
-        boxShadow: isLocked
-            ? []
-            : [
-                BoxShadow(
-                  color: tierColor.withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header with icon and tier badge
-            Row(
-              children: [
-                // Trophy Icon
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: isLocked
-                        ? Colors.grey.shade800
-                        : tierColor.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isLocked ? Colors.grey.shade600 : tierColor,
-                      width: 2,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      trophy.icon,
-                      style: TextStyle(
-                        fontSize: 32,
-                        color: isLocked ? Colors.grey.shade600 : null,
-                      ),
-                    ),
-                  ),
+      child: Row(
+        children: [
+          // 1. Tiny Icon
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: isLocked ? Colors.white.withOpacity(0.05) : tierColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                trophy.icon,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isLocked ? Colors.grey.shade600 : null,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Trophy Name
-                      Text(
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+
+          // 2. Main Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
                         trophy.name,
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isLocked ? Colors.grey.shade400 : Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Micro Tier Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0.5),
+                      decoration: BoxDecoration(
+                        color: tierColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(2),
+                        border: Border.all(color: tierColor.withOpacity(0.3), width: 0.5),
+                      ),
+                      child: Text(
+                        _getTierLabel(),
+                        style: TextStyle(
+                          fontSize: 6,
                           fontWeight: FontWeight.bold,
-                          color: isLocked ? Colors.grey.shade500 : Colors.white,
+                          color: tierColor,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      // Tier Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isLocked
-                              ? Colors.grey.shade700
-                              : tierColor.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isLocked ? Colors.grey.shade600 : tierColor,
-                          ),
-                        ),
-                        child: Text(
-                          _getTierLabel(),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: isLocked ? Colors.grey.shade500 : tierColor,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                // Lock/Check Icon
-                Icon(
-                  isLocked ? Icons.lock : Icons.check_circle,
-                  color: isLocked ? Colors.grey.shade600 : tierColor,
-                  size: 28,
+                Text(
+                  trophy.description,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey.shade600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            // Description
-            Text(
-              trophy.description,
-              style: TextStyle(
-                fontSize: 14,
-                color: isLocked ? Colors.grey.shade600 : Colors.grey.shade300,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Progress Bar (if locked and has progress)
-            if (isLocked && progress != null) ...[
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Progress',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade500,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        '$progress / ${trophy.requirement}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade400,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+          ),
+          
+          const SizedBox(width: 8),
+
+          // 3. Compact Trailing Status
+          if (isLocked && progress != null) ...[
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '$progress/${trophy.requirement}',
+                  style: TextStyle(fontSize: 9, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 2),
+                SizedBox(
+                  width: 32,
+                  height: 2,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(1),
                     child: LinearProgressIndicator(
                       value: progress! / trophy.requirement,
-                      backgroundColor: Colors.grey.shade800,
-                      valueColor: AlwaysStoppedAnimation<Color>(tierColor),
-                      minHeight: 8,
+                      backgroundColor: Colors.white10,
+                      valueColor: AlwaysStoppedAnimation<Color>(tierColor.withOpacity(0.6)),
                     ),
                   ),
-                ],
+                ),
+              ],
+            )
+          ] else if (isUnlocked && unlockedAt != null) ...[
+            Text(
+              _formatDate(unlockedAt!),
+              style: TextStyle(
+                fontSize: 9,
+                color: tierColor.withOpacity(0.6),
+                fontStyle: FontStyle.italic,
               ),
-            ],
-            // Unlocked Date
-            if (isUnlocked && unlockedAt != null) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today,
-                    size: 14,
-                    color: Colors.grey.shade500,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Unlocked ${_formatDate(unlockedAt!)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade500,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
+          ] else ...[
+             Icon(
+              isLocked ? Icons.lock_outline : Icons.check_circle_outline,
+              size: 14,
+              color: isLocked ? Colors.grey.shade800 : tierColor.withOpacity(0.6),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

@@ -304,14 +304,8 @@ class _TrophiesScreenState extends State<TrophiesScreen> {
                               ],
                             ),
                           )
-                        : GridView.builder(
+                        : ListView.builder(
                             padding: const EdgeInsets.all(16),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              childAspectRatio: 0.75,
-                              crossAxisSpacing: 16,
-                              mainAxisSpacing: 16,
-                            ),
                             itemCount: filteredTrophies.length,
                             itemBuilder: (context, index) {
                               final item = filteredTrophies[index];
