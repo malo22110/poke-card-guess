@@ -7,6 +7,7 @@ class AuthStorageService {
   static const _userIdKey = 'user_id';
   static const _userNameKey = 'user_name';
   static const _profileCompletedKey = 'profile_completed';
+  static const _guestNameKey = 'guest_name';
 
   Future<void> saveSession({
     required String token, 
@@ -22,6 +23,10 @@ class AuthStorageService {
     }
   }
 
+  Future<void> saveGuestName(String guestName) async {
+    await _storage.write(key: _guestNameKey, value: guestName);
+  }
+
   Future<String?> getToken() async {
     return await _storage.read(key: _tokenKey);
   }
@@ -32,6 +37,10 @@ class AuthStorageService {
   
   Future<String?> getUserName() async {
     return await _storage.read(key: _userNameKey);
+  }
+
+  Future<String?> getGuestName() async {
+    return await _storage.read(key: _guestNameKey);
   }
 
   Future<bool> getProfileCompleted() async {

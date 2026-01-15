@@ -26,6 +26,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String? _authToken;
+  String? _guestName;
   bool _isLoading = true;
 
   @override
@@ -36,9 +37,11 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _loadSession() async {
     final token = await AuthStorageService().getToken();
+    final guestName = await AuthStorageService().getGuestName();
     if (mounted) {
       setState(() {
         _authToken = token;
+        _guestName = guestName;
         _isLoading = false;
       });
     }
@@ -79,11 +82,27 @@ class _MyAppState extends State<MyApp> {
           args['authToken'] = _authToken;
         }
         
+        // Inject stored guest name if missing
+        if (args['guestName'] == null && _guestName != null) {
+          args['guestName'] = _guestName;
+        }
+        
         // Type conversion for boolean flags from URL
         if (args['isHost'] == 'true') args['isHost'] = true;
         if (args['isHost'] == 'false') args['isHost'] = false;
 
         final newSettings = RouteSettings(name: settings.name, arguments: args);
+        
+        // Check if user is authenticated
+        final hasToken = _authToken != null || args['authToken'] != null;
+        
+        // If logged in user tries to access login page, redirect to lobby
+        if (uri.path == '/login' && hasToken) {
+          return MaterialPageRoute(
+            builder: (_) => LobbyScreen(authToken: args['authToken'] ?? _authToken),
+            settings: const RouteSettings(name: '/lobby'),
+          );
+        }
 
         switch (uri.path) {
           case '/login':

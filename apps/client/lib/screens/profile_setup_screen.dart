@@ -73,15 +73,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
     try {
       if (widget.isGuest) {
-        // For guest, we just pass the info forward to the lobby
-        // We'll simulate a "token" or just pass args. 
-        // Actually, lobby expects authToken. If guest, we usually just go to lobby.
-        // We need to pass guestName to lobby.
-        Navigator.of(context).pushReplacementNamed('/lobby', arguments: {
-          'guestName': username,
-          'guestAvatar': _selectedAvatar,
-          // No auth token
-        });
+        // Save guest name to storage
+        await AuthStorageService().saveGuestName(username);
+        
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/lobby', arguments: {
+            'guestName': username,
+            'guestAvatar': _selectedAvatar,
+            // No auth token
+          });
+        }
       } else {
         // Authenticated user: Update backend
         final response = await http.patch(

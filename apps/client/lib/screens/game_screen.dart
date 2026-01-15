@@ -280,8 +280,12 @@ class _GameScreenState extends State<GameScreen> {
     if (args == null || args['lobbyId'] == null) {
        WidgetsBinding.instance.addPostFrameCallback((_) async {
          final token = await AuthStorageService().getToken();
+         final guestName = await AuthStorageService().getGuestName();
          if (context.mounted) {
-           Navigator.of(context).pushReplacementNamed('/lobby', arguments: {'authToken': token});
+           Navigator.of(context).pushReplacementNamed('/lobby', arguments: {
+             'authToken': token,
+             if (guestName != null) 'guestName': guestName,
+           });
          }
        });
        return;
@@ -739,11 +743,15 @@ class _GameScreenState extends State<GameScreen> {
             ElevatedButton(
               onPressed: () async {
                 final token = await AuthStorageService().getToken();
+                final guestName = await AuthStorageService().getGuestName();
                 if (context.mounted) {
                   Navigator.of(context).pushNamedAndRemoveUntil(
                     '/lobby',
                     (route) => false,
-                    arguments: {'authToken': token},
+                    arguments: {
+                      'authToken': token,
+                      if (guestName != null) 'guestName': guestName,
+                    },
                   );
                 }
               },
@@ -932,11 +940,15 @@ class _GameScreenState extends State<GameScreen> {
               ElevatedButton.icon(
                 onPressed: () async {
                   final token = await AuthStorageService().getToken();
+                  final guestName = await AuthStorageService().getGuestName();
                   if (context.mounted) {
                     Navigator.of(context).pushNamedAndRemoveUntil(
                       '/lobby',
                       (route) => false,
-                      arguments: {'authToken': token},
+                      arguments: {
+                        'authToken': token,
+                        if (guestName != null) 'guestName': guestName,
+                      },
                     );
                   }
                 },
