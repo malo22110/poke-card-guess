@@ -211,9 +211,8 @@ export class TrophiesService {
     key: string,
     requirement: number,
   ): Promise<boolean> {
-    // TODO: Track personal best improvements
-    // This requires storing historical best scores per game mode
-    return false;
+    // Check based on how many times user has beaten their high score
+    return user.timesBeatenHighScore >= requirement;
   }
 
   private async checkRarityTrophy(

@@ -4,6 +4,7 @@ import axios from 'axios';
 import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../prisma.service';
+import { TrophiesService } from '../trophies/trophies.service';
 
 export interface GameConfig {
   rounds: number;
@@ -61,7 +62,10 @@ export class GameService {
   private tcgdex = new TCGdex('fr');
   private specialRaritiesCache: string[] | null = null;
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private trophiesService: TrophiesService,
+  ) {}
 
   // --- Lobby Management ---
 
@@ -285,6 +289,76 @@ export class GameService {
         );
       } catch (e) {
         console.error('Failed to save game session', e);
+      }
+
+      // Update user stats for trophy tracking
+      try {
+        const score = lobby.scores.get(userId) || 0;
+        const isWinner =
+          score === Math.max(...Array.from(lobby.scores.values()));
+
+        // Count cards guessed correctly
+        let cardsGuessed = 0;
+        for (let round = 1; round <= lobby.currentRound; round++) {
+          const roundHistory = lobby.history.get(round) || [];
+          const userResult = roundHistory.find((r) => r.userId === userId);
+          if (userResult?.correct) {
+            cardsGuessed++;
+          }
+        }
+
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: {
+            totalScore: { increment: score },
+            gamesPlayed: { increment: 1 },
+            gamesWon: { increment: isWinner ? 1 : 0 },
+            cardsGuessed: { increment: cardsGuessed },
+            currentStreak: isWinner ? { increment: 1 } : 0, // Reset to 0 if lost
+          },
+        });
+
+        // Update best streak if current streak is higher
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            currentStreak: true,
+            bestStreak: true,
+            highScore: true,
+          },
+        });
+
+        if (user && user.currentStreak > user.bestStreak) {
+          await this.prisma.user.update({
+            where: { id: userId },
+            data: { bestStreak: user.currentStreak },
+          });
+        }
+
+        // Update personal best (high score) tracking
+        if (user && score > user.highScore) {
+          await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+              highScore: score,
+              timesBeatenHighScore: { increment: 1 },
+            },
+          });
+          console.log(
+            `User ${userId} beat their high score! New record: ${score}`,
+          );
+        }
+
+        // Check for new trophies
+        const newTrophies =
+          await this.trophiesService.checkAndAwardTrophies(userId);
+        if (newTrophies.length > 0) {
+          console.log(
+            `User ${userId} unlocked ${newTrophies.length} new trophies!`,
+          );
+        }
+      } catch (e) {
+        console.error('Failed to update user stats or check trophies', e);
       }
     }
   }

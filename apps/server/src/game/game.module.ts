@@ -2,10 +2,12 @@ import { Module } from '@nestjs/common';
 import { GameController } from './game.controller';
 import { GameService } from './game.service';
 import { PrismaService } from '../prisma.service';
+import { TrophiesModule } from '../trophies/trophies.module';
 
 import { GameGateway } from './game.gateway';
 
 @Module({
+  imports: [TrophiesModule],
   controllers: [GameController],
   providers: [GameService, PrismaService, GameGateway],
 })
