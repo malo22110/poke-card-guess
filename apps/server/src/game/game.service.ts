@@ -642,6 +642,8 @@ export class GameService {
 
       return result;
     } else {
+      // Reset streak on incorrect guess
+      await this.saveRoundResult(userId, currentCard, false, 0, 0);
       return { correct: false };
     }
   }
