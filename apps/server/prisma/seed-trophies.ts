@@ -539,6 +539,53 @@ const trophies = [
     icon: '💝',
     requirement: 50,
   },
+
+  // Leaderboard Trophies (5)
+  {
+    key: 'top_player',
+    name: 'Top Player',
+    description: 'Reach rank #1 on the leaderboard',
+    category: 'leaderboard',
+    tier: 'diamond',
+    icon: '👑',
+    requirement: 1,
+  },
+  {
+    key: 'podium_finish',
+    name: 'Podium Finish',
+    description: 'Reach top 3 on the leaderboard',
+    category: 'leaderboard',
+    tier: 'diamond',
+    icon: '🥈',
+    requirement: 3,
+  },
+  {
+    key: 'top_10',
+    name: 'Top 10',
+    description: 'Reach top 10 on the leaderboard',
+    category: 'leaderboard',
+    tier: 'gold',
+    icon: '🏅',
+    requirement: 10,
+  },
+  {
+    key: 'challenger',
+    name: 'Challenger',
+    description: 'Reach top 100 on the leaderboard',
+    category: 'leaderboard',
+    tier: 'silver',
+    icon: '🤺',
+    requirement: 100,
+  },
+  {
+    key: 'contender',
+    name: 'Contender',
+    description: 'Reach top 500 on the leaderboard',
+    category: 'leaderboard',
+    tier: 'bronze',
+    icon: '⚔️',
+    requirement: 500,
+  },
 ];
 
 async function main() {

@@ -25,11 +25,13 @@ export class TrophiesService {
     const allTrophies = await this.getAllTrophies();
     const unlockedIds = new Set(unlocked.map((ut) => ut.trophyId));
 
+    const userRank = user ? await this.getUserRank(user.totalScore) : 0;
+
     const locked = allTrophies
       .filter((t) => !unlockedIds.has(t.id))
       .map((t) => ({
         ...t,
-        progress: user ? this.calculateProgress(user, t) : 0,
+        progress: user ? this.calculateProgress(user, t, userRank) : 0,
       }));
 
     return {
@@ -40,8 +42,14 @@ export class TrophiesService {
     };
   }
 
-  private calculateProgress(user: any, trophy: any): number {
+  private calculateProgress(
+    user: any,
+    trophy: any,
+    userRank: number = 0,
+  ): number {
     switch (trophy.category) {
+      case 'leaderboard':
+        return userRank;
       case 'score':
         return user.totalScore;
       case 'games':
@@ -169,7 +177,7 @@ export class TrophiesService {
         return await this.checkSpecialTrophy(user, key, requirement);
 
       case 'leaderboard':
-        return await this.checkLeaderboardTrophy(user, key);
+        return await this.checkLeaderboardTrophy(user, key, requirement);
 
       case 'personal_best':
         return await this.checkPersonalBestTrophy(user, key, requirement);
@@ -262,10 +270,21 @@ export class TrophiesService {
   private async checkLeaderboardTrophy(
     user: any,
     key: string,
+    requirement: number,
   ): Promise<boolean> {
-    // TODO: Implement leaderboard checking logic
-    // This requires querying leaderboard positions
-    return false;
+    const rank = await this.getUserRank(user.totalScore);
+    return rank <= requirement;
+  }
+
+  private async getUserRank(score: number): Promise<number> {
+    const betterPlayers = await this.prisma.user.count({
+      where: {
+        totalScore: {
+          gt: score,
+        },
+      },
+    });
+    return betterPlayers + 1;
   }
 
   private async checkPersonalBestTrophy(
