@@ -153,6 +153,32 @@ export class TrophiesService {
     return newlyUnlocked;
   }
 
+  async unlockTrophy(userId: string, trophyKey: string) {
+    const trophy = await this.prisma.trophy.findUnique({
+      where: { key: trophyKey },
+    });
+    if (!trophy) return null;
+
+    const existing = await this.prisma.userTrophy.findUnique({
+      where: {
+        userId_trophyId: {
+          userId,
+          trophyId: trophy.id,
+        },
+      },
+    });
+
+    if (existing) return null;
+
+    return await this.prisma.userTrophy.create({
+      data: {
+        userId,
+        trophyId: trophy.id,
+      },
+      include: { trophy: true },
+    });
+  }
+
   private async checkTrophyRequirement(
     user: any,
     trophy: any,

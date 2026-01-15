@@ -586,6 +586,43 @@ const trophies = [
     icon: '⚔️',
     requirement: 500,
   },
+  // Event Trophies (4)
+  {
+    key: 'quick_draw',
+    name: 'Quick Draw',
+    description: 'Be the first to guess a card',
+    category: 'event',
+    tier: 'gold',
+    icon: '⚡',
+    requirement: 1,
+  },
+  {
+    key: 'good_sport',
+    name: 'Good Sport',
+    description: 'Give up a round',
+    category: 'event',
+    tier: 'bronze',
+    icon: '🏳️',
+    requirement: 1,
+  },
+  {
+    key: 'slow_poke',
+    name: 'Slow Poke',
+    description: 'Take more than 25 seconds to guess',
+    category: 'event',
+    tier: 'bronze',
+    icon: '🐢',
+    requirement: 25,
+  },
+  {
+    key: 'buzzer_beater',
+    name: 'Buzzer Beater',
+    description: 'Guess at the last second of the round',
+    category: 'event',
+    tier: 'silver',
+    icon: '⏰',
+    requirement: 1,
+  },
 ];
 
 async function main() {

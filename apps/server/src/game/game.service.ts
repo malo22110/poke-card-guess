@@ -540,8 +540,43 @@ export class GameService {
       // Check for realtime trophies (e.g. streaks, first win)
       let unlockedTrophies: any[] = [];
       try {
-        unlockedTrophies =
+        // 1. Check Event Trophies
+        const currentRoundHistory = lobby.history.get(lobby.currentRound) || [];
+        const alreadyGuessedCorrectly = currentRoundHistory.some(
+          (r) => r.correct,
+        );
+
+        // Quick Draw (First to guess)
+        if (!alreadyGuessedCorrectly) {
+          const t = await this.trophiesService.unlockTrophy(
+            userId,
+            'quick_draw',
+          );
+          if (t) unlockedTrophies.push(t);
+        }
+
+        // Slow Poke (> 25s)
+        if (elapsedTime > 25000) {
+          const t = await this.trophiesService.unlockTrophy(
+            userId,
+            'slow_poke',
+          );
+          if (t) unlockedTrophies.push(t);
+        }
+
+        // Buzzer Beater (Last second, > 29s)
+        if (elapsedTime >= 29000) {
+          const t = await this.trophiesService.unlockTrophy(
+            userId,
+            'buzzer_beater',
+          );
+          if (t) unlockedTrophies.push(t);
+        }
+
+        // 2. Check Stats Trophies
+        const statsTrophies =
           await this.trophiesService.checkAndAwardTrophies(userId);
+        unlockedTrophies.push(...statsTrophies);
         if (unlockedTrophies.length > 0) {
           console.log(
             `[Realtime Trophies] User ${userId} unlocked ${unlockedTrophies.length} trophies`,
@@ -606,6 +641,13 @@ export class GameService {
     const currentCard = lobby.cards[lobby.currentRound - 1];
     lobby.roundResults.set(userId, true);
     await this.saveRoundResult(userId, currentCard, false);
+
+    // Award 'Good Sport' trophy for giving up
+    try {
+      await this.trophiesService.unlockTrophy(userId, 'good_sport');
+    } catch (e) {
+      console.error('Failed to unlock good_sport trophy', e);
+    }
 
     // Save detailed history for give up
     const elapsedTime = Math.max(
