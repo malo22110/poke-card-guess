@@ -117,7 +117,7 @@ class MyApp extends StatelessWidget {
               case '/profile-setup':
                  return MaterialPageRoute(
                   builder: (_) => ProfileSetupScreen(
-                    authToken: authToken,
+                    authToken: args['authToken'] ?? authToken,
                     isGuest: args['isGuest'] == true,
                   ), 
                   settings: newSettings

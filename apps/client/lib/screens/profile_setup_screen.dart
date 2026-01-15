@@ -34,12 +34,32 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     // Defer access to context until build or post-frame, but Provider listen=false is safe in initState usually?
     // Actually no, inherited widgets in initState can be tricky.
     // Better to use WidgetsBinding.instance.addPostFrameCallback
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final authService = Provider.of<AuthService>(context, listen: false);
-      if (!widget.isGuest && authService.currentUser != null) {
-         setState(() {
-            _usernameController.text = authService.currentUser!.name;
-         });
+      if (!widget.isGuest) {
+         if (authService.currentUser != null) {
+            setState(() {
+              _usernameController.text = authService.currentUser!.name;
+            });
+         } else if (widget.authToken != null) {
+            // Fetch profile using the token to pre-fill data
+            try {
+              final response = await http.get(
+                Uri.parse('${AppConfig.apiBaseUrl}/users/me'),
+                headers: {'Authorization': 'Bearer ${widget.authToken}'},
+              );
+              if (response.statusCode == 200) {
+                 final data = jsonDecode(response.body);
+                 if (mounted) {
+                   setState(() {
+                      _usernameController.text = data['name'] ?? '';
+                   });
+                 }
+              }
+            } catch (e) {
+              print('Error fetching initial profile data: $e');
+            }
+         }
       }
     });
   }
