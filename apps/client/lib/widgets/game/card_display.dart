@@ -103,24 +103,50 @@ class _CardDisplayState extends State<CardDisplay> with SingleTickerProviderStat
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: Image.memory(
-          base64Decode(base64String),
-          fit: BoxFit.contain,
-          gaplessPlayback: true,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: Colors.grey[300],
-              child: const Center(
-                child: Icon(Icons.error, size: 50),
-              ),
-            );
-          },
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1A237E), // Dark Indigo
+            Color(0xFF0D47A1), // Dark Blue
+            Color(0xFF000051), // Deep Blue
+          ],
         ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white24, width: 2),
+      ),
+      child: Stack(
+        children: [
+          // Mystery Question Mark
+          Center(
+            child: Opacity(
+              opacity: 0.5,
+              child: Image.asset(
+                'assets/images/interogation.png',
+                width: 120,
+                height: 120,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          // Progressive Reveal Card
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Image.memory(
+              base64Decode(base64String),
+              fit: BoxFit.contain,
+              gaplessPlayback: true,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.transparent,
+                  child: const Center(
+                    child: Icon(Icons.error, size: 50, color: Colors.white54),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
