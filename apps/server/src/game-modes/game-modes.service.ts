@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { GameMode, GameModeUpvote, Prisma } from '@prisma/client';
 
@@ -7,6 +11,25 @@ export class GameModesService {
   constructor(private prisma: PrismaService) {
     this.seedOfficialModes();
   }
+
+  // ... existing methods ...
+
+  async remove(id: string, userId: string) {
+    const mode = await this.prisma.gameMode.findUnique({ where: { id } });
+    if (!mode) {
+      throw new NotFoundException('Game mode not found');
+    }
+
+    if (mode.creatorId !== userId) {
+      throw new ForbiddenException('You can only delete your own game modes');
+    }
+
+    return this.prisma.gameMode.delete({
+      where: { id },
+    });
+  }
+
+  // ... other methods ...
 
   async seedOfficialModes() {
     const classicName = 'The Classic';

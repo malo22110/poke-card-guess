@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   UseGuards,
@@ -37,6 +38,12 @@ export class GameModesController {
   @Post(':id/upvote')
   upvote(@Request() req, @Param('id') id: string) {
     return this.gameModesService.upvote(id, req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  remove(@Request() req, @Param('id') id: string) {
+    return this.gameModesService.remove(id, req.user.userId);
   }
 
   @Get(':id/leaderboard')

@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pokecardguess/config/app_config.dart';
-
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
 class CreateGameScreen extends StatefulWidget {
   final String? authToken;
 
@@ -391,6 +392,56 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
     );
   }
 
+  Future<void> _deleteGameMode(String gameModeId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Game Mode'),
+        content: const Text('Are you sure you want to delete this game mode?'),
+        backgroundColor: const Color(0xFF1F2937),
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+        contentTextStyle: const TextStyle(color: Colors.white70),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false), 
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60))
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true), 
+            child: const Text('Delete', style: TextStyle(color: Colors.redAccent))
+          ),
+        ],
+      ),
+    );
+     
+    if (confirm != true) return;
+
+    if (mounted) setState(() => _isLoadingGameModes = true);
+     
+    try {
+      final response = await http.delete(
+        Uri.parse('${AppConfig.apiBaseUrl}/gamemodes/$gameModeId'),
+        headers: {
+          'Authorization': 'Bearer $_authToken',
+        },
+      );
+       
+      if (response.statusCode == 200) {
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Game mode deleted')));
+        }
+        await _fetchGameModes();
+      } else {
+        throw Exception('Failed to delete game mode');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        setState(() => _isLoadingGameModes = false);
+      }
+    }
+  }
+
   Widget _buildPresetsTab() {
     if (_isLoadingGameModes) {
       return const Center(child: CircularProgressIndicator(color: Colors.white));
@@ -417,6 +468,10 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
               final mode = _gameModes[index];
               final isSelected = _selectedGameModeId == mode['id'];
               final isOfficial = mode['isOfficial'] == true;
+              
+              final authService = Provider.of<AuthService>(context, listen: false);
+              final currentUserId = authService.currentUser?.id;
+              final isCreator = currentUserId != null && mode['creatorId'] == currentUserId;
               
               return GestureDetector(
                 onTap: () {
@@ -472,6 +527,19 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
                                 ),
                               ),
                             ),
+                          
+                          if (isCreator)
+                             Padding(
+                               padding: const EdgeInsets.only(left: 8.0),
+                               child: InkWell(
+                                 onTap: () => _deleteGameMode(mode['id']),
+                                 borderRadius: BorderRadius.circular(12),
+                                 child: Padding(
+                                   padding: const EdgeInsets.all(4),
+                                   child: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                                 ),
+                               ),
+                             ),
                         ],
                       ),
                       const SizedBox(height: 8),
