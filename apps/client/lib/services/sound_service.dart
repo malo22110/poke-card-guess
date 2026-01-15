@@ -64,4 +64,6 @@ class SoundService {
   static const String gameOver = 'game_over';
   static const String select = 'select';
   static const String reveal = 'reveal';
+  static const String trophy = 'trophy';
+  static const String explosion = 'explosion';
 }

@@ -654,6 +654,8 @@ class _GameScreenState extends State<GameScreen> {
         final completer = Completer<void>();
         late OverlayEntry overlayEntry;
         
+        SoundService().playSound(SoundService.trophy);
+        
         overlayEntry = OverlayEntry(
           builder: (context) => TrophyUnlockToast(
             trophy: trophy,
