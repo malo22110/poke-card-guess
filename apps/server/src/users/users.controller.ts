@@ -9,12 +9,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
+import { TrophiesService } from '../trophies/trophies.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // Assuming this exists or will be created/imported correctly
 import { User } from '@prisma/client';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly trophiesService: TrophiesService,
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
@@ -52,12 +56,20 @@ export class UsersController {
   @Post('share')
   async trackShare(
     @Request() req,
-  ): Promise<{ success: boolean; totalShares: number }> {
+  ): Promise<{ success: boolean; totalShares: number; newTrophies?: any[] }> {
     const userId = req.user.userId;
     const user = await this.usersService.incrementShareCount(userId);
+
+    // Check for social trophies
+    const newTrophies = await this.trophiesService.checkAndAwardTrophies(
+      userId,
+      { category: 'social' },
+    );
+
     return {
       success: true,
       totalShares: user.sharesCount,
+      newTrophies,
     };
   }
 

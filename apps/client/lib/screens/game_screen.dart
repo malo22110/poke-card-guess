@@ -58,11 +58,42 @@ class _GameScreenState extends State<GameScreen> {
   StreamSubscription? _guessResultSub;
   StreamSubscription? _scoreboardSub;
   
+  // Share tracking - ensure each button only increments once per game
+  bool _hasSharedViaSystem = false;
+  bool _hasSharedViaX = false;
+  bool _hasDownloaded = false;
+  
   // Timer variables
   Timer? _countdownTimer;
   int _remainingSeconds = 30;
   static const int _roundDuration = 30;
 
+  // Helper method to track share on backend (only once per button type)
+  Future<void> _trackShare(String shareType, bool hasShared) async {
+    if (hasShared) return; // Already tracked this share type
+    
+    final authStorage = AuthStorageService();
+    final authToken = await authStorage.getToken();
+    if (authToken == null) return;
+    
+    try {
+      final response = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/users/share'),
+        headers: {
+          'Authorization': 'Bearer $authToken',
+        },
+      );
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        if (data['newTrophies'] != null && data['newTrophies'].isNotEmpty) {
+          TrophyService().showTrophies(data['newTrophies']);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error tracking share: $e');
+    }
+  }
 
   void _shareSystem(Uint8List image) async {
     try {
@@ -76,6 +107,10 @@ class _GameScreenState extends State<GameScreen> {
         [xFile],
         text: 'I just scored $score points in PokeCardGuess! Can you beat me? 🃏✨ #Pokemon #PokeCardGuess ${AppConfig.clientUrl}',
       );
+      
+      // Track share on backend (only once)
+      await _trackShare('system', _hasSharedViaSystem);
+      setState(() => _hasSharedViaSystem = true);
     } catch (e) {
       debugPrint('Error sharing: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -198,7 +233,7 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  void _downloadImage(Uint8List image) {
+  void _downloadImage(Uint8List image) async {
       final blob = html.Blob([image]);
       final url = html.Url.createObjectUrlFromBlob(blob);
       final anchor = html.AnchorElement(href: url)
@@ -209,12 +244,20 @@ class _GameScreenState extends State<GameScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Image saved! Ready to post on Instagram stories! 📸')),
       );
+      
+      // Track share on backend (only once)
+      await _trackShare('download', _hasDownloaded);
+      setState(() => _hasDownloaded = true);
   }
 
-  void _shareOnX() {
+  void _shareOnX() async {
       final text = Uri.encodeComponent('I just scored $score points in PokeCardGuess! Can you beat me? 🃏✨\n\nPlay now: ${AppConfig.clientUrl}\n\n#Pokemon #PokeCardGuess');
       final url = Uri.parse('https://x.com/intent/post?text=$text');
       launchUrl(url, mode: LaunchMode.externalApplication);
+      
+      // Track share on backend (only once)
+      await _trackShare('x', _hasSharedViaX);
+      setState(() => _hasSharedViaX = true);
   }
   
   // Scoreboard and waiting state
