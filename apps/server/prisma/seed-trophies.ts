@@ -148,7 +148,7 @@ const trophies = [
   {
     key: 'hot_streak',
     name: 'Hot Streak',
-    description: 'Win 3 games in a row',
+    description: 'Guess 3 cards correctly in a row',
     category: 'streak',
     tier: 'silver',
     icon: '🔥',
@@ -157,7 +157,7 @@ const trophies = [
   {
     key: 'on_fire',
     name: 'On Fire',
-    description: 'Win 5 games in a row',
+    description: 'Guess 5 cards correctly in a row',
     category: 'streak',
     tier: 'gold',
     icon: '🔥',
@@ -166,7 +166,7 @@ const trophies = [
   {
     key: 'unstoppable',
     name: 'Unstoppable',
-    description: 'Win 10 games in a row',
+    description: 'Guess 10 cards correctly in a row',
     category: 'streak',
     tier: 'diamond',
     icon: '🔥',
@@ -175,7 +175,7 @@ const trophies = [
   {
     key: 'legendary_streak',
     name: 'Legendary Streak',
-    description: 'Win 15 games in a row',
+    description: 'Guess 15 cards correctly in a row',
     category: 'streak',
     tier: 'diamond',
     icon: '🔥',
