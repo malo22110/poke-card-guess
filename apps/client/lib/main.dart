@@ -15,6 +15,8 @@ import 'screens/leaderboard_screen.dart';
 import 'services/auth_service.dart';
 import 'services/sound_service.dart';
 
+import 'widgets/trophy/trophy_listener.dart';
+
 void main() {
   runApp(
     MultiProvider(
@@ -49,6 +51,7 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           title: 'PokeCardGuess',
           debugShowCheckedModeBanner: false,
+          builder: (context, child) => TrophyListener(child: child!),
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
             useMaterial3: true,

@@ -678,7 +678,7 @@ const trophies = [
     requirement: 1,
   },
 
-  // Creator Trophies (1)
+  // Creator Trophies
   {
     key: 'game_creator',
     name: 'Game Creator',
@@ -686,6 +686,24 @@ const trophies = [
     category: 'creator',
     tier: 'bronze',
     icon: '🛠️',
+    requirement: 1,
+  },
+  {
+    key: 'community_favorite',
+    name: 'Community Favorite',
+    description: 'Get 10 upvotes on one of your game modes',
+    category: 'creator',
+    tier: 'silver',
+    icon: '❤️',
+    requirement: 10,
+  },
+  {
+    key: 'cleanup_crew',
+    name: 'Cleanup Crew',
+    description: 'Delete one of your custom game modes',
+    category: 'creator',
+    tier: 'bronze',
+    icon: '🧹',
     requirement: 1,
   },
 ];

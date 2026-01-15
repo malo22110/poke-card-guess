@@ -177,6 +177,23 @@ export class TrophiesService {
     return eligibleModes;
   }
 
+  async checkUpvoteTrophies(userId: string) {
+    const modes = await this.prisma.gameMode.findMany({
+      where: { creatorId: userId },
+      include: { _count: { select: { upvotes: true } } },
+    });
+
+    const maxUpvotes = modes.reduce(
+      (max, m) => Math.max(max, m._count.upvotes || 0),
+      0,
+    );
+
+    if (maxUpvotes >= 10) {
+      return this.unlockTrophy(userId, 'community_favorite');
+    }
+    return null;
+  }
+
   async checkAndAwardTrophies(
     userId: string,
     options?: { category?: string; excludeCategories?: string[] },

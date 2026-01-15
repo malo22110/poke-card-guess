@@ -4,15 +4,17 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { TrophiesService } from '../trophies/trophies.service';
 import { GameMode, GameModeUpvote, Prisma } from '@prisma/client';
 
 @Injectable()
 export class GameModesService {
-  constructor(private prisma: PrismaService) {
+  constructor(
+    private prisma: PrismaService,
+    private trophiesService: TrophiesService,
+  ) {
     this.seedOfficialModes();
   }
-
-  // ... existing methods ...
 
   async remove(id: string, userId: string) {
     const mode = await this.prisma.gameMode.findUnique({ where: { id } });
@@ -24,12 +26,138 @@ export class GameModesService {
       throw new ForbiddenException('You can only delete your own game modes');
     }
 
-    return this.prisma.gameMode.delete({
+    await this.prisma.gameMode.delete({
       where: { id },
+    });
+
+    const trophy = await this.trophiesService.unlockTrophy(
+      userId,
+      'cleanup_crew',
+    );
+    return { newTrophies: trophy ? [trophy] : [] };
+  }
+
+  async create(data: {
+    name: string;
+    description?: string;
+    config: any;
+    creatorId: string;
+  }) {
+    const mode = await this.prisma.gameMode.create({
+      data: {
+        name: data.name,
+        description: data.description,
+        configJson: JSON.stringify(data.config),
+        creatorId: data.creatorId,
+        isOfficial: false,
+      },
+    });
+
+    const newTrophies = await this.trophiesService.checkAndAwardTrophies(
+      data.creatorId,
+      {
+        category: 'creator',
+      },
+    );
+    return { ...mode, newTrophies };
+  }
+
+  async upvote(gameModeId: string, userId: string) {
+    const existing = await this.prisma.gameModeUpvote.findUnique({
+      where: {
+        userId_gameModeId: {
+          userId,
+          gameModeId,
+        },
+      },
+    });
+
+    if (existing) {
+      return this.prisma.gameModeUpvote.delete({
+        where: { id: existing.id },
+      });
+    }
+
+    const upvote = await this.prisma.gameModeUpvote.create({
+      data: {
+        userId,
+        gameModeId,
+      },
+    });
+
+    const gameMode = await this.prisma.gameMode.findUnique({
+      where: { id: gameModeId },
+      select: { creatorId: true },
+    });
+
+    const newTrophies: any[] = [];
+    if (gameMode && gameMode.creatorId) {
+      const trophy = await this.trophiesService.checkUpvoteTrophies(
+        gameMode.creatorId,
+      );
+      if (trophy) newTrophies.push(trophy);
+    }
+
+    return { ...upvote, newTrophies };
+  }
+
+  async findAll() {
+    return this.prisma.gameMode.findMany({
+      include: {
+        creator: {
+          select: { name: true },
+        },
+        _count: {
+          select: { upvotes: true },
+        },
+      },
+      orderBy: [{ isOfficial: 'desc' }, { upvotes: { _count: 'desc' } }],
     });
   }
 
-  // ... other methods ...
+  async findOne(id: string) {
+    return this.prisma.gameMode.findUnique({
+      where: { id },
+      include: {
+        _count: { select: { upvotes: true } },
+      },
+    });
+  }
+
+  async getLeaderboard(gameModeId: string) {
+    const grouped = await this.prisma.gameSession.groupBy({
+      by: ['userId'],
+      where: { gameModeId },
+      _max: {
+        score: true,
+      },
+      orderBy: {
+        _max: {
+          score: 'desc',
+        },
+      },
+      take: 50,
+    });
+
+    const leaderboard = await Promise.all(
+      grouped.map(async (group) => {
+        return this.prisma.gameSession.findFirst({
+          where: {
+            gameModeId,
+            userId: group.userId,
+            score: group._max.score as number,
+          },
+          include: {
+            user: {
+              select: { name: true, picture: true, socials: true },
+            },
+          },
+        });
+      }),
+    );
+
+    return leaderboard.filter((item) => item !== null);
+  }
 
   async seedOfficialModes() {
     const classicName = 'The Classic';
@@ -143,115 +271,5 @@ export class GameModesService {
       });
       console.log('Seeded official mode: The Pioneers');
     }
-  }
-
-  async findAll() {
-    return this.prisma.gameMode.findMany({
-      include: {
-        creator: {
-          select: { name: true },
-        },
-        _count: {
-          select: { upvotes: true },
-        },
-      },
-      orderBy: [{ isOfficial: 'desc' }, { upvotes: { _count: 'desc' } }],
-    });
-  }
-
-  async findOne(id: string) {
-    return this.prisma.gameMode.findUnique({
-      where: { id },
-      include: {
-        _count: { select: { upvotes: true } },
-      },
-    });
-  }
-
-  async create(data: {
-    name: string;
-    description?: string;
-    config: any;
-    creatorId: string;
-  }) {
-    const mode = await this.prisma.gameMode.create({
-      data: {
-        name: data.name,
-        description: data.description,
-        configJson: JSON.stringify(data.config),
-        creatorId: data.creatorId,
-        isOfficial: false,
-      },
-    });
-
-    // Check for creator trophies
-    // Assuming checkAndNotifyTrophies exists or similar? I need to check the service.
-    // I'll wait to verify TrophiesService content.
-    return mode;
-  }
-
-  async upvote(gameModeId: string, userId: string) {
-    // Check if already upvoted
-    const existing = await this.prisma.gameModeUpvote.findUnique({
-      where: {
-        userId_gameModeId: {
-          userId,
-          gameModeId,
-        },
-      },
-    });
-
-    if (existing) {
-      // Remove upvote (toggle)
-      return this.prisma.gameModeUpvote.delete({
-        where: { id: existing.id },
-      });
-    }
-
-    return this.prisma.gameModeUpvote.create({
-      data: {
-        userId,
-        gameModeId,
-      },
-    });
-  }
-
-  async getLeaderboard(gameModeId: string) {
-    // Get distinct users with their max score
-    const grouped = await this.prisma.gameSession.groupBy({
-      by: ['userId'],
-      where: { gameModeId },
-      _max: {
-        score: true,
-      },
-      orderBy: {
-        _max: {
-          score: 'desc',
-        },
-      },
-      take: 50,
-    });
-
-    // Fetch details for these specific best sessions
-    // Using findFirst for each to handle potential duplicates (same max score twice)
-    // and to load the User relation.
-    const leaderboard = await Promise.all(
-      grouped.map(async (group) => {
-        return this.prisma.gameSession.findFirst({
-          where: {
-            gameModeId,
-            userId: group.userId,
-            score: group._max.score as number,
-          },
-          include: {
-            user: {
-              select: { name: true, picture: true, socials: true },
-            },
-          },
-        });
-      }), // No need to be wrapped in filters since findFirst will find at least one.
-    );
-
-    return leaderboard.filter((item) => item !== null);
   }
 }

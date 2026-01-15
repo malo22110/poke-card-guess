@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pokecardguess/config/app_config.dart';
 import 'package:provider/provider.dart';
+import '../services/trophy_service.dart';
 import '../services/auth_service.dart';
 class CreateGameScreen extends StatefulWidget {
   final String? authToken;
@@ -430,6 +431,14 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
         if (mounted) {
            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Game mode deleted')));
         }
+        
+        try {
+           final data = jsonDecode(response.body);
+           if (data['newTrophies'] != null) {
+              TrophyService().showTrophies(data['newTrophies']);
+           }
+        } catch (_) {}
+
         await _fetchGameModes();
       } else {
         throw Exception('Failed to delete game mode');
@@ -579,6 +588,13 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        try {
+           final data = jsonDecode(response.body);
+           if (data['newTrophies'] != null) {
+              TrophyService().showTrophies(data['newTrophies']);
+           }
+        } catch (_) {}
+        
         // Toggle optimistic update or just refresh
         _fetchGameModes(); 
       }
@@ -817,6 +833,14 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Game mode saved successfully!')),
         );
+        
+        try {
+           final data = jsonDecode(response.body);
+           if (data['newTrophies'] != null) {
+              TrophyService().showTrophies(data['newTrophies']);
+           }
+        } catch (_) {}
+
         _fetchGameModes(); // Refresh list
         _tabController.animateTo(0); // Switch to Presets tab
       } else {

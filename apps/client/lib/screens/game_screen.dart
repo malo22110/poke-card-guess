@@ -12,6 +12,7 @@ import 'dart:collection';
 import 'package:screenshot/screenshot.dart';
 import 'package:universal_html/html.dart' as html;
 
+import '../services/trophy_service.dart';
 import '../widgets/game/game_header.dart';
 import '../widgets/game/card_display.dart';
 import '../widgets/game/guess_input.dart';
@@ -250,9 +251,7 @@ class _GameScreenState extends State<GameScreen> {
   // Let's stick to GameScreen and use direct socket access for the missing event helper, or just trust 'nextRound' will come eventually.
   // But we want to show the answer! 
   
-  // Trophy Queue System
-  final Queue<dynamic> _trophyQueue = Queue<dynamic>();
-  bool _isProcessingTrophies = false;
+
   
   // Inline validation error for guess input
   String? _guessError;
@@ -374,7 +373,7 @@ class _GameScreenState extends State<GameScreen> {
        if (data['unlockedTrophies'] != null) {
          final trophies = data['unlockedTrophies'] as List;
          if (trophies.isNotEmpty) {
-           _showTrophyCelebration(trophies);
+           TrophyService().showTrophies(trophies);
          }
        }
        
@@ -561,7 +560,7 @@ class _GameScreenState extends State<GameScreen> {
           if (_guestId != null && trophiesMap[_guestId] != null) {
              final myTrophies = trophiesMap[_guestId] as List;
              if (myTrophies.isNotEmpty) {
-                 _showTrophyCelebration(myTrophies);
+                 TrophyService().showTrophies(myTrophies);
              }
           }
        }
@@ -631,52 +630,7 @@ class _GameScreenState extends State<GameScreen> {
     // We just wait.
   }
 
-  void _showTrophyCelebration(List<dynamic> trophyDataList) {
-    for (var trophyData in trophyDataList) {
-      _trophyQueue.add(trophyData);
-    }
-    _processTrophyQueue();
-  }
 
-  Future<void> _processTrophyQueue() async {
-    if (_isProcessingTrophies) return;
-    _isProcessingTrophies = true;
-
-    while (_trophyQueue.isNotEmpty && mounted) {
-      final trophyData = _trophyQueue.removeFirst();
-      
-      try {
-        final Map<String, dynamic> dataMap = trophyData as Map<String, dynamic>;
-        // Backend returns UserTrophy which contains 'trophy'. Extract it if present.
-        final trophyJson = dataMap['trophy'] != null ? dataMap['trophy'] : dataMap;
-        
-        final trophy = Trophy.fromJson(trophyJson);
-        final completer = Completer<void>();
-        late OverlayEntry overlayEntry;
-        
-        SoundService().playSound(SoundService.trophy);
-        
-        overlayEntry = OverlayEntry(
-          builder: (context) => TrophyUnlockToast(
-            trophy: trophy,
-            onDismiss: () {
-              overlayEntry.remove();
-              completer.complete();
-            },
-          ),
-        );
-        
-        // Use rootOverlay: true to show above everything
-        Overlay.of(context, rootOverlay: true).insert(overlayEntry);
-        await completer.future;
-        await Future.delayed(const Duration(milliseconds: 500));
-      } catch (e) {
-        debugPrint('Error showing trophy toast: $e');
-      }
-    }
-    
-    _isProcessingTrophies = false;
-  }
 
   @override
   Widget build(BuildContext context) {
