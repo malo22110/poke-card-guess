@@ -230,9 +230,10 @@ export class GameService {
 
   async getCurrentRoundData(lobby: GameLobby) {
     if (lobby.currentRound > lobby.cards.length) {
+      let unlockedTrophies = {};
       if (lobby.status !== 'FINISHED') {
         lobby.status = 'FINISHED';
-        await this.saveGameSession(lobby);
+        unlockedTrophies = await this.saveGameSession(lobby);
       }
 
       const finalScores = Object.fromEntries(lobby.scores);
@@ -240,6 +241,7 @@ export class GameService {
       return {
         status: 'FINISHED',
         scores: finalScores,
+        unlockedTrophies,
         playerNames: Object.fromEntries(lobby.playerNames),
         history: lobby.cards.map((card, index) => ({
           name: card.name,
@@ -262,6 +264,7 @@ export class GameService {
   }
 
   private async saveGameSession(lobby: GameLobby) {
+    const unlockedTrophies: Record<string, any[]> = {};
     // Only save session for users who are logged in (not guests)
     // And if there is a gameModeId? Or save all sessions but link mode if valid?
     // User requested leaderboard for game modes.
@@ -471,11 +474,13 @@ export class GameService {
           console.log(
             `User ${userId} unlocked ${newTrophies.length} new trophies!`,
           );
+          unlockedTrophies[userId] = newTrophies;
         }
       } catch (e) {
         console.error('Failed to update user stats or check trophies', e);
       }
     }
+    return unlockedTrophies;
   }
 
   async makeGuess(lobbyId: string, userId: string, guess: string) {

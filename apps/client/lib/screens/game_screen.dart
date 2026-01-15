@@ -18,6 +18,8 @@ import '../widgets/game/result_display.dart';
 import '../widgets/game/scoreboard.dart';
 import '../widgets/game/story_share_card.dart';
 import '../services/game_socket_service.dart';
+import '../widgets/trophy/trophy_toast.dart';
+import '../../models/trophy.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -504,6 +506,17 @@ class _GameScreenState extends State<GameScreen> {
          error = 'Game Finished!';
          _isLoading = false;
        });
+
+       // Check for unlocked trophies
+       if (data['unlockedTrophies'] != null) {
+          final trophiesMap = data['unlockedTrophies'];
+          if (_guestId != null && trophiesMap[_guestId] != null) {
+             final myTrophies = trophiesMap[_guestId] as List;
+             if (myTrophies.isNotEmpty) {
+                 _showTrophyCelebration(myTrophies);
+             }
+          }
+       }
        return;
     }
     
@@ -565,6 +578,39 @@ class _GameScreenState extends State<GameScreen> {
     // Actually next card is handled automatically by server timeout!
     // But if we want to force it? Server handles it.
     // We just wait.
+  }
+
+  void _showTrophyCelebration(List<dynamic> trophyDataList) async {
+    for (var trophyData in trophyDataList) {
+      if (!mounted) return;
+      
+      try {
+        final Map<String, dynamic> dataMap = trophyData as Map<String, dynamic>;
+        // Backend returns UserTrophy which contains 'trophy'. Extract it if present.
+        final trophyJson = dataMap['trophy'] != null ? dataMap['trophy'] : dataMap;
+        
+        final trophy = Trophy.fromJson(trophyJson);
+        final completer = Completer<void>();
+        late OverlayEntry overlayEntry;
+        
+        overlayEntry = OverlayEntry(
+          builder: (context) => TrophyUnlockToast(
+            trophy: trophy,
+            onDismiss: () {
+              overlayEntry.remove();
+              completer.complete();
+            },
+          ),
+        );
+        
+        // Use rootOverlay: true to show above everything
+        Overlay.of(context, rootOverlay: true).insert(overlayEntry);
+        await completer.future;
+        await Future.delayed(const Duration(milliseconds: 300));
+      } catch (e) {
+        debugPrint('Error showing trophy toast: $e');
+      }
+    }
   }
 
   @override
