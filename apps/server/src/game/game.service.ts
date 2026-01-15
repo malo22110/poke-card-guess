@@ -398,11 +398,24 @@ export class GameService {
           );
         }
 
-        // Track unique sets guessed
+        // Track unique sets guessed (only if correctly guessed)
+        // Track unique sets and rarities (only if correctly guessed)
         const setsInThisGame = new Set<string>();
-        for (const card of lobby.cards) {
-          if (card.set) {
-            setsInThisGame.add(card.set);
+        const raritiesInGame: Record<string, number> = {};
+
+        for (const [roundNum, roundResults] of lobby.history) {
+          const cardIndex = roundNum - 1;
+          const card = lobby.cards[cardIndex];
+          if (!card) continue;
+
+          // Check if current user guessed correctly in this round
+          const userStat = roundResults.find((s) => s.userId === userId);
+          if (userStat && userStat.correct) {
+            if (card.set) setsInThisGame.add(card.set);
+            if (card.rarity) {
+              raritiesInGame[card.rarity] =
+                (raritiesInGame[card.rarity] || 0) + 1;
+            }
           }
         }
 
@@ -433,15 +446,6 @@ export class GameService {
             console.log(
               `User ${userId} discovered ${newSetsCount} new set(s)! Total: ${uniqueSets.size}`,
             );
-          }
-        }
-
-        // Track card rarities
-        const raritiesInGame: Record<string, number> = {};
-        for (const card of lobby.cards) {
-          if (card.rarity) {
-            raritiesInGame[card.rarity] =
-              (raritiesInGame[card.rarity] || 0) + 1;
           }
         }
 

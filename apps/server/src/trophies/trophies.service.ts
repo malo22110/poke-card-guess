@@ -358,7 +358,15 @@ export class TrophiesService {
 
     try {
       const stats = JSON.parse(user.rarityStats);
-      return (stats[key] || 0) >= requirement;
+      let targetRarity = '';
+      if (key === 'rare_hunter') targetRarity = 'Rare';
+      else if (key === 'ultra_rare_collector') targetRarity = 'Ultra Rare';
+      else if (key === 'secret_seeker') targetRarity = 'Secret Rare';
+
+      const userCount = targetRarity
+        ? stats[targetRarity] || 0
+        : stats[key] || 0;
+      return userCount >= requirement;
     } catch {
       return false;
     }
