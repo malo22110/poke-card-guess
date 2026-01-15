@@ -280,6 +280,10 @@ export class TrophiesService {
     key: string,
     requirement: number,
   ): Promise<boolean> {
+    if (key === 'multi_mode_master') {
+      // TODO: Implement mode-specific leaderboard tracking
+      return false;
+    }
     const rank = await this.getUserRank(user.totalScore);
     return rank <= requirement;
   }
@@ -346,9 +350,50 @@ export class TrophiesService {
       return bestTime <= requirement;
     }
 
+    if (key === 'time_attack_master') {
+      if (user.gamesPlayed < 20) return false;
+      const averageTime = await this.getAverageGuessTime(user.id);
+      return averageTime <= requirement;
+    }
+
     // Default check based on fastest guess time
     // Requirement is in seconds, lower is better
     return (user.fastestGuess || 999.0) <= requirement;
+  }
+
+  private async getAverageGuessTime(userId: string): Promise<number> {
+    const sessions = await this.prisma.gameSession.findMany({
+      where: { userId },
+      orderBy: { playedAt: 'desc' },
+      take: 20,
+      select: { roundStats: true },
+    });
+
+    let totalTime = 0;
+    let totalGuesses = 0;
+
+    for (const session of sessions) {
+      if (!session.roundStats) continue;
+      try {
+        const stats = JSON.parse(session.roundStats as string);
+        if (Array.isArray(stats)) {
+          for (const round of stats) {
+            if (Array.isArray(round.stats)) {
+              const userStat = round.stats.find(
+                (s: any) => s.userId === userId,
+              );
+              if (userStat && userStat.timeTaken) {
+                totalTime += userStat.timeTaken;
+                totalGuesses++;
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+
+    if (totalGuesses === 0) return 999.0;
+    return totalTime / totalGuesses / 1000; // Average in seconds
   }
 
   private async getBestGameTime(userId: string): Promise<number> {
