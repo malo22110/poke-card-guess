@@ -275,6 +275,30 @@ export class GameService {
 
       const score = lobby.scores.get(userId) || 0;
 
+      // Compute round stats
+      const roundStats = [];
+      let cardsGuessed = 0;
+      let highestRoundScoreInGame = 0;
+
+      for (let round = 1; round <= lobby.currentRound; round++) {
+        const roundHistory = lobby.history.get(round) || [];
+        const userResult = roundHistory.find((r) => r.userId === userId);
+        if (userResult) {
+          roundStats.push({
+            round,
+            points: userResult.points,
+            timeTaken: userResult.timeTaken,
+            correct: userResult.correct,
+          });
+          if (userResult.points > highestRoundScoreInGame) {
+            highestRoundScoreInGame = userResult.points;
+          }
+          if (userResult.correct) {
+            cardsGuessed++;
+          }
+        }
+      }
+
       try {
         await this.prisma.gameSession.create({
           data: {
@@ -283,6 +307,7 @@ export class GameService {
             score,
             maxScore,
             rounds: lobby.config.rounds,
+            roundStats: JSON.stringify(roundStats),
           },
         });
         console.log(
@@ -294,19 +319,10 @@ export class GameService {
 
       // Update user stats for trophy tracking
       try {
-        const score = lobby.scores.get(userId) || 0;
         const isWinner =
           score === Math.max(...Array.from(lobby.scores.values()));
 
-        // Count cards guessed correctly
-        let cardsGuessed = 0;
-        for (let round = 1; round <= lobby.currentRound; round++) {
-          const roundHistory = lobby.history.get(round) || [];
-          const userResult = roundHistory.find((r) => r.userId === userId);
-          if (userResult?.correct) {
-            cardsGuessed++;
-          }
-        }
+        // Count cards guessed correctly (already done above)
 
         await this.prisma.user.update({
           where: { id: userId },
@@ -326,6 +342,7 @@ export class GameService {
             currentStreak: true,
             bestStreak: true,
             highScore: true,
+            bestRoundScore: true,
           },
         });
 
@@ -347,6 +364,17 @@ export class GameService {
           });
           console.log(
             `User ${userId} beat their high score! New record: ${score}`,
+          );
+        }
+
+        // Update best round score
+        if (user && highestRoundScoreInGame > user.bestRoundScore) {
+          await this.prisma.user.update({
+            where: { id: userId },
+            data: { bestRoundScore: highestRoundScoreInGame },
+          });
+          console.log(
+            `User ${userId} new best round score: ${highestRoundScoreInGame}`,
           );
         }
 

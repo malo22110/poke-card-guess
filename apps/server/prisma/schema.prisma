@@ -38,6 +38,7 @@ model User {
   timesBeatenHighScore Int     @default(0) // How many times user has beaten their high score
   uniqueSetsGuessed    String? // JSON array of unique set IDs
   rarityStats          String? // JSON object tracking cards guessed by rarity
+  bestRoundScore       Int     @default(0) // Highest score achieved in a single round
   
   createdGameModes GameMode[]
   upvotes          GameModeUpvote[]
@@ -96,6 +97,7 @@ model GameSession {
   score       Int
   maxScore    Int      // Maximum possible score for this session
   rounds      Int
+  roundStats  String?  // JSON array of round results (score, time, etc.)
   playedAt    DateTime @default(now())
 }
 

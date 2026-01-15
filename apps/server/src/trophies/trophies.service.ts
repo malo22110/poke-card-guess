@@ -136,10 +136,7 @@ export class TrophiesService {
 
     switch (key) {
       case 'perfect_round':
-        // Check if any session has a round score >= 25000
-        // This would need to be tracked per round, not per session
-        // For now, return false - needs round-level tracking
-        return false;
+        return user.bestRoundScore >= requirement;
 
       case 'speed_demon':
       case 'lightning_fast':
