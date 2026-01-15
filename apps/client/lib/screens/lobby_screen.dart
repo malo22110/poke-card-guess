@@ -1,4 +1,4 @@
-// verifying file content first
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
@@ -259,7 +259,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
           Navigator.of(context).pushNamed('/profile', arguments: {'authToken': widget.authToken});
         },
       ),
-      drawer: AppDrawer(authToken: widget.authToken),
+      drawer: const AppDrawer(),
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(

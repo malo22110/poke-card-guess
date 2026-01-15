@@ -196,7 +196,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
              Navigator.of(context).pushNamed('/profile', arguments: {'authToken': authToken});
         },
       ),
-      drawer: AppDrawer(authToken: authToken),
+      drawer: const AppDrawer(),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
