@@ -631,7 +631,14 @@ class _GameScreenState extends State<GameScreen> {
          _isLoading = false;
        });
 
-       SoundService().playSound(SoundService.victory);
+       // Play victory sound only if current player is the winner
+       if (_guestId != null && _scores.isNotEmpty) {
+         final myScore = _scores[_guestId] ?? 0;
+         final highestScore = _scores.values.reduce((a, b) => a > b ? a : b);
+         if (myScore == highestScore && myScore > 0) {
+           SoundService().playSound(SoundService.victory);
+         }
+       }
 
        // Check for unlocked trophies
        if (data['unlockedTrophies'] != null) {
