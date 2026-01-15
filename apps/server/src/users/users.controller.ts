@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Patch,
+  Post,
   Body,
   UseGuards,
   Request,
@@ -45,5 +46,33 @@ export class UsersController {
     }
 
     return this.usersService.update(userId, updateData);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('share')
+  async trackShare(
+    @Request() req,
+  ): Promise<{ success: boolean; totalShares: number }> {
+    const userId = req.user.userId;
+    const user = await this.usersService.incrementShareCount(userId);
+    return {
+      success: true,
+      totalShares: user.sharesCount,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('donation')
+  async recordDonation(
+    @Request() req,
+    @Body() body: { amount: number }, // Amount in dollars
+  ): Promise<{ success: boolean; totalDonated: number }> {
+    const userId = req.user.userId;
+    const amountInCents = Math.round(body.amount * 100);
+    const user = await this.usersService.addDonation(userId, amountInCents);
+    return {
+      success: true,
+      totalDonated: user.totalDonated / 100, // Return in dollars
+    };
   }
 }

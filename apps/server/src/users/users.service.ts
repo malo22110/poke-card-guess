@@ -46,4 +46,22 @@ export class UsersService {
       data,
     });
   }
+
+  async incrementShareCount(id: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        sharesCount: { increment: 1 },
+      },
+    });
+  }
+
+  async addDonation(id: string, amountInCents: number): Promise<User> {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        totalDonated: { increment: amountInCents },
+      },
+    });
+  }
 }
