@@ -691,14 +691,18 @@ class _GameScreenState extends State<GameScreen> {
                 totalRounds: _totalRounds,
                 remainingSeconds: (error == 'Game Finished!') ? null : _remainingSeconds,
               ),
+              const SizedBox(height: 20),
               Expanded(
-                child: Center(
-                  child: _isLoading
-                      ? _buildLoadingState()
-                      : error != null
-                          ? _buildErrorState()
-                          : _buildGameContent(),
-                ),
+                child: _isLoading || error != null
+                    ? Center(
+                        child: _isLoading
+                            ? _buildLoadingState()
+                            : _buildErrorState(),
+                      )
+                    : Align(
+                        alignment: Alignment.topCenter,
+                        child: _buildGameContent(),
+                      ),
               ),
             ],
           ),
@@ -997,7 +1001,7 @@ class _GameScreenState extends State<GameScreen> {
         final isMobile = constraints.maxWidth < 900;
 
         final gameContentWidget = Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             CardDisplay(
               showFullCard: showFullCard,
