@@ -61,7 +61,7 @@ export class TrophiesService {
 
     switch (category) {
       case 'leaderboard':
-        return userRank;
+        return user.totalScore > 0 ? userRank : 0;
       case 'score':
         return user.totalScore;
       case 'games':
@@ -324,6 +324,7 @@ export class TrophiesService {
       // TODO: Implement mode-specific leaderboard tracking
       return false;
     }
+    if (user.totalScore === 0) return false;
     const rank = await this.getUserRank(user.totalScore);
     return rank <= requirement;
   }
