@@ -252,6 +252,9 @@ class _GameScreenState extends State<GameScreen> {
   // Trophy Queue System
   final Queue<dynamic> _trophyQueue = Queue<dynamic>();
   bool _isProcessingTrophies = false;
+  
+  // Inline validation error for guess input
+  String? _guessError;
 
   @override
   void initState() {
@@ -377,9 +380,12 @@ class _GameScreenState extends State<GameScreen> {
        if (data['correct'] == true) {
          _showResult(data);
        } else {
-         ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Incorrect! Try again.')),
-         );
+          if (mounted) {
+            setState(() {
+              _guessError = 'Incorrect! Try again.';
+            });
+            // Haptic feedback or shake could be added here
+          }
        }
     });
 
@@ -586,6 +592,9 @@ class _GameScreenState extends State<GameScreen> {
         }
       }
       
+      // Reset error state for new round
+      _guessError = null;
+
       // Extract round info
       _currentRound = data['round'] ?? 0;
       _totalRounds = data['totalRounds'] ?? 0;
@@ -1033,6 +1042,14 @@ class _GameScreenState extends State<GameScreen> {
                 controller: _guessController,
                 onGuessSubmitted: checkGuess,
                 onGiveUp: giveUp,
+                errorText: _guessError,
+                onChanged: (value) {
+                  if (_guessError != null) {
+                    setState(() {
+                      _guessError = null;
+                    });
+                  }
+                },
               )
             else
               ResultDisplay(
