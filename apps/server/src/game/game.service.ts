@@ -45,7 +45,8 @@ export interface GameCard {
   fullImageUrl: string;
   set: string;
   croppedImage: string;
-  commonCardImage?: string; // Add this if it was intended from previous context
+  commonCardImage?: string;
+  rarity?: string; // Card rarity (Common, Uncommon, Rare, etc.)
 }
 
 export interface RoundResult {
@@ -387,6 +388,37 @@ export class GameService {
           }
         }
 
+        // Track card rarities
+        const raritiesInGame: Record<string, number> = {};
+        for (const card of lobby.cards) {
+          if (card.rarity) {
+            raritiesInGame[card.rarity] =
+              (raritiesInGame[card.rarity] || 0) + 1;
+          }
+        }
+
+        if (Object.keys(raritiesInGame).length > 0) {
+          const userWithRarity = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { rarityStats: true },
+          });
+
+          const currentStats = userWithRarity?.rarityStats
+            ? JSON.parse(userWithRarity.rarityStats)
+            : {};
+
+          for (const [rarity, count] of Object.entries(raritiesInGame)) {
+            currentStats[rarity] = (currentStats[rarity] || 0) + count;
+          }
+
+          await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+              rarityStats: JSON.stringify(currentStats),
+            },
+          });
+        }
+
         // Check for new trophies
         const newTrophies =
           await this.trophiesService.checkAndAwardTrophies(userId);
@@ -654,6 +686,7 @@ export class GameService {
           fullImageUrl: `${cardData.image}/high.png`,
           set: cardData.set.name,
           croppedImage,
+          rarity: cardData.rarity || 'Unknown',
         });
       } catch (e) {
         console.warn('Failed to fetch/process a card', e);

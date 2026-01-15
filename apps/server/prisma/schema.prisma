@@ -37,6 +37,7 @@ model User {
   highScore            Int     @default(0) // Personal best score
   timesBeatenHighScore Int     @default(0) // How many times user has beaten their high score
   uniqueSetsGuessed    String? // JSON array of unique set IDs
+  rarityStats          String? // JSON object tracking cards guessed by rarity
   
   createdGameModes GameMode[]
   upvotes          GameModeUpvote[]

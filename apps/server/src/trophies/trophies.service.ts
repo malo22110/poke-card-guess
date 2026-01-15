@@ -220,9 +220,15 @@ export class TrophiesService {
     key: string,
     requirement: number,
   ): Promise<boolean> {
-    // TODO: Track cards guessed by rarity
-    // This requires storing card metadata with guesses
-    return false;
+    // Check based on rarity stats
+    if (!user.rarityStats) return false;
+
+    try {
+      const stats = JSON.parse(user.rarityStats);
+      return (stats[key] || 0) >= requirement;
+    } catch {
+      return false;
+    }
   }
 
   private async checkSetTrophy(
