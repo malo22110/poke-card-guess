@@ -5,12 +5,14 @@ class GameHeader extends StatelessWidget {
   final int currentRound;
   final int totalRounds;
   final int? remainingSeconds;
+  final int currentStreak;
 
   const GameHeader({
     super.key,
     required this.currentRound,
     required this.totalRounds,
     this.remainingSeconds,
+    this.currentStreak = 0,
   });
 
   @override
@@ -77,6 +79,50 @@ class GameHeader extends StatelessWidget {
             ),
             const SizedBox(width: 8),
           ],
+          // Streak Counter
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: currentStreak >= 3
+                    ? [Colors.orange.shade700, Colors.red.shade700]
+                    : [Colors.purple.shade700, Colors.indigo.shade700],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: currentStreak >= 3 ? Colors.orange : Colors.purple.shade300,
+                width: 2,
+              ),
+              boxShadow: currentStreak >= 3
+                  ? [
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.5),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  currentStreak >= 3 ? Icons.local_fire_department : Icons.whatshot,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$currentStreak',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
           AnimatedBuilder(
             animation: SoundService(),
             builder: (context, _) {

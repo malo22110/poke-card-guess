@@ -63,6 +63,9 @@ class _GameScreenState extends State<GameScreen> {
   bool _hasSharedViaX = false;
   bool _hasDownloaded = false;
   
+  // Streak tracking
+  int _currentStreak = 0;
+  
   // Timer variables
   Timer? _countdownTimer;
   int _remainingSeconds = 30;
@@ -305,6 +308,32 @@ class _GameScreenState extends State<GameScreen> {
     _guessController = TextEditingController();
   }
 
+  Future<void> _fetchCurrentStreak() async {
+    try {
+      final authStorage = AuthStorageService();
+      final authToken = await authStorage.getToken();
+      if (authToken == null) return;
+
+      final response = await http.get(
+        Uri.parse('${AppConfig.apiBaseUrl}/users/me'),
+        headers: {
+          'Authorization': 'Bearer $authToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            _currentStreak = data['currentStreak'] ?? 0;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching current streak: $e');
+    }
+  }
+
   @override
   void dispose() {
     _guessController.dispose();
@@ -340,6 +369,9 @@ class _GameScreenState extends State<GameScreen> {
     if (args != null) {
       _lobbyId = args['lobbyId'];
       _guestId = args['guestId'];
+      
+      // Fetch current streak
+      _fetchCurrentStreak();
       
       if (_gameId == null) {
         _initSocket();
@@ -423,12 +455,16 @@ class _GameScreenState extends State<GameScreen> {
        if (data['correct'] == true) {
          SoundService().playSound(SoundService.correct);
          _showResult(data);
+         // Update streak after correct guess
+         _fetchCurrentStreak();
        } else {
           if (mounted) {
             SoundService().playSound(SoundService.wrong);
             setState(() {
               _guessError = 'Incorrect! Try again.';
             });
+            // Update streak after incorrect guess (it will be reset)
+            _fetchCurrentStreak();
             // Haptic feedback or shake could be added here
           }
        }
@@ -697,6 +733,7 @@ class _GameScreenState extends State<GameScreen> {
                 currentRound: _currentRound,
                 totalRounds: _totalRounds,
                 remainingSeconds: (error == 'Game Finished!') ? null : _remainingSeconds,
+                currentStreak: _currentStreak,
               ),
               const SizedBox(height: 20),
               Expanded(
