@@ -11,6 +11,7 @@ import 'screens/profile_setup_screen.dart';
 import 'screens/terms_and_conditions_screen.dart';
 import 'screens/trophies_screen.dart';
 import 'screens/leaderboard_screen.dart';
+import 'screens/donation_screen.dart';
 
 import 'services/auth_service.dart';
 import 'services/sound_service.dart';
@@ -134,6 +135,8 @@ class MyApp extends StatelessWidget {
                 return MaterialPageRoute(builder: (_) => TrophiesScreen(authToken: authToken), settings: newSettings);
               case '/leaderboard':
                 return MaterialPageRoute(builder: (_) => LeaderboardScreen(authToken: authToken), settings: newSettings);
+              case '/donate':
+                return MaterialPageRoute(builder: (_) => DonationScreen(authToken: authToken), settings: newSettings);
             }
             return null;
           },

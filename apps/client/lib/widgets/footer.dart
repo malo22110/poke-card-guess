@@ -18,7 +18,7 @@ class GameFooter extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'PokeCardGuess is an unofficial fan game and is not affiliated with Nintendo, Game Freak, or The Pokémon Company.\nAll assets belong to their respective owners.',
+                  'PokeCardGuess is an unofficial fan game and is not affiliated with Nintendo, Game Freak, or The Pokémon Company.\\nAll assets belong to their respective owners.',
                   textAlign: TextAlign.left,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
@@ -62,37 +62,7 @@ class GameFooter extends StatelessWidget {
             children: [
               InkWell(
                 onTap: () {
-                   showDialog(
-                     context: context,
-                     builder: (context) => AlertDialog(
-                       backgroundColor: const Color(0xFF1F2937),
-                       title: const Text('Support PokeCardGuess', style: TextStyle(color: Colors.white)),
-                       content: const Text(
-                         'PokeCardGuess is a free fan project.\n\n'
-                         'Your donation helps cover server hosting costs and supports the development of new features and game modes.\n\n'
-                         'Every bit helps keep the game alive!',
-                         style: TextStyle(color: Colors.white70),
-                       ),
-                       actions: [
-                         TextButton(
-                           onPressed: () => Navigator.pop(context),
-                           child: const Text('Cancel'),
-                         ),
-                         ElevatedButton.icon(
-                           onPressed: () {
-                             Navigator.pop(context);
-                             launchUrl(Uri.parse('https://www.paypal.com/donate/?hosted_button_id=3W3L9NC2BVGSS')); 
-                           },
-                           icon: const Icon(Icons.favorite, size: 18),
-                           label: const Text('Donate'),
-                           style: ElevatedButton.styleFrom(
-                             backgroundColor: const Color(0xFF003087),
-                             foregroundColor: Colors.white,
-                           ),
-                         ),
-                       ],
-                     ),
-                   );
+                   Navigator.of(context).pushNamed('/donate');
                 },
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
