@@ -22,6 +22,8 @@ class _TrophiesScreenState extends State<TrophiesScreen> {
   String? _error;
   String _selectedFilter = 'all'; // all, unlocked, locked
   String _selectedCategory = 'all';
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   final List<String> _categories = [
     'all',
@@ -30,6 +32,7 @@ class _TrophiesScreenState extends State<TrophiesScreen> {
     'wins',
     'streak',
     'cards',
+    'social',
     'special',
     'leaderboard',
     'personal_best',
@@ -45,6 +48,12 @@ class _TrophiesScreenState extends State<TrophiesScreen> {
   void initState() {
     super.initState();
     _loadTrophies();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadTrophies() async {
@@ -103,6 +112,16 @@ class _TrophiesScreenState extends State<TrophiesScreen> {
       trophies = trophies.where((t) {
         final trophy = t is UserTrophy ? t.trophy : t as Trophy;
         return trophy.category == _selectedCategory;
+      }).toList();
+    }
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      trophies = trophies.where((t) {
+        final trophy = t is UserTrophy ? t.trophy : t as Trophy;
+        final query = _searchQuery.toLowerCase();
+        return trophy.name.toLowerCase().contains(query) ||
+               trophy.description.toLowerCase().contains(query);
       }).toList();
     }
 
@@ -215,6 +234,37 @@ class _TrophiesScreenState extends State<TrophiesScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Search Bar (only show when 'all' filter is selected)
+                if (_selectedFilter == 'all')
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) => setState(() => _searchQuery = value),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Search trophies...',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                        prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, color: Colors.white54),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: Colors.indigo.shade700,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                  ),
                 // Filter Chips
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
