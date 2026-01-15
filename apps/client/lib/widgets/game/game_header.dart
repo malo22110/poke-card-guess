@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/sound_service.dart';
 
 class GameHeader extends StatelessWidget {
   final int currentRound;
@@ -74,7 +75,30 @@ class GameHeader extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(width: 8),
           ],
+          AnimatedBuilder(
+            animation: SoundService(),
+            builder: (context, _) {
+              return GestureDetector(
+                onTap: () => SoundService().toggleMute(),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  ),
+                  child: Icon(
+                    SoundService().isMuted ? Icons.volume_off : Icons.volume_up,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              );
+            },
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(

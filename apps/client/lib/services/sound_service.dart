@@ -1,7 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
-class SoundService {
+class SoundService extends ChangeNotifier {
   static final SoundService _instance = SoundService._internal();
 
   factory SoundService() {
@@ -21,11 +21,7 @@ class SoundService {
 
   void toggleMute() {
     _isMuted = !_isMuted;
-    if (_isMuted) {
-      _effectPlayer.setVolume(0);
-    } else {
-      _effectPlayer.setVolume(1.0);
-    }
+    notifyListeners();
   }
 
   Future<void> playSound(String soundName, {double volume = 1.0}) async {
