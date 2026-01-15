@@ -112,6 +112,23 @@ class TrophyCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0.5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(2),
+                        border: Border.all(color: Colors.white.withOpacity(0.2), width: 0.5),
+                      ),
+                      child: Text(
+                        trophy.category.replaceAll('_', ' ').toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 6,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 Text(

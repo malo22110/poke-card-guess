@@ -677,6 +677,17 @@ const trophies = [
     icon: '⏰',
     requirement: 1,
   },
+
+  // Creator Trophies (1)
+  {
+    key: 'game_creator',
+    name: 'Game Creator',
+    description: 'Create your first custom game mode',
+    category: 'creator',
+    tier: 'bronze',
+    icon: '🛠️',
+    requirement: 1,
+  },
 ];
 
 async function main() {

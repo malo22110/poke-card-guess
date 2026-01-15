@@ -14,6 +14,11 @@ export class TrophiesService {
   async getUserTrophies(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
+      include: {
+        _count: {
+          select: { createdGameModes: true },
+        },
+      },
     });
 
     const unlocked = await this.prisma.userTrophy.findMany({
@@ -88,6 +93,8 @@ export class TrophiesService {
         } catch {
           return 0;
         }
+      case 'creator':
+        return user._count?.createdGameModes || 0;
       case 'rarity':
         try {
           const stats = JSON.parse(user.rarityStats || '{}');
@@ -179,6 +186,9 @@ export class TrophiesService {
       include: {
         trophies: {
           include: { trophy: true },
+        },
+        _count: {
+          select: { createdGameModes: true },
         },
       },
     });
@@ -290,6 +300,9 @@ export class TrophiesService {
 
       case 'rarity':
         return await this.checkRarityTrophy(user, key, requirement);
+
+      case 'creator':
+        return (user._count?.createdGameModes || 0) >= requirement;
 
       case 'set':
         return await this.checkSetTrophy(user, key, requirement);

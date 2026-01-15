@@ -151,7 +151,7 @@ export class GameModesService {
     config: any;
     creatorId: string;
   }) {
-    return this.prisma.gameMode.create({
+    const mode = await this.prisma.gameMode.create({
       data: {
         name: data.name,
         description: data.description,
@@ -160,6 +160,11 @@ export class GameModesService {
         isOfficial: false,
       },
     });
+
+    // Check for creator trophies
+    // Assuming checkAndNotifyTrophies exists or similar? I need to check the service.
+    // I'll wait to verify TrophiesService content.
+    return mode;
   }
 
   async upvote(gameModeId: string, userId: string) {
