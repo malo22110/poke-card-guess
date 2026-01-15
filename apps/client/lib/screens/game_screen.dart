@@ -8,6 +8,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:collection';
 import 'package:screenshot/screenshot.dart';
 import 'package:universal_html/html.dart' as html;
 
@@ -247,6 +248,10 @@ class _GameScreenState extends State<GameScreen> {
   // Let's stick to GameScreen and use direct socket access for the missing event helper, or just trust 'nextRound' will come eventually.
   // But we want to show the answer! 
   
+  // Trophy Queue System
+  final Queue<dynamic> _trophyQueue = Queue<dynamic>();
+  bool _isProcessingTrophies = false;
+
   @override
   void initState() {
     super.initState();
@@ -350,6 +355,15 @@ class _GameScreenState extends State<GameScreen> {
     
     _guessResultSub = _socketService.guessResultStream.listen((data) {
        if (!mounted) return;
+       
+       // Real-time trophy unlocking check
+       if (data['unlockedTrophies'] != null) {
+         final trophies = data['unlockedTrophies'] as List;
+         if (trophies.isNotEmpty) {
+           _showTrophyCelebration(trophies);
+         }
+       }
+       
        if (data['correct'] == true) {
          _showResult(data);
        } else {
@@ -580,9 +594,19 @@ class _GameScreenState extends State<GameScreen> {
     // We just wait.
   }
 
-  void _showTrophyCelebration(List<dynamic> trophyDataList) async {
+  void _showTrophyCelebration(List<dynamic> trophyDataList) {
     for (var trophyData in trophyDataList) {
-      if (!mounted) return;
+      _trophyQueue.add(trophyData);
+    }
+    _processTrophyQueue();
+  }
+
+  Future<void> _processTrophyQueue() async {
+    if (_isProcessingTrophies) return;
+    _isProcessingTrophies = true;
+
+    while (_trophyQueue.isNotEmpty && mounted) {
+      final trophyData = _trophyQueue.removeFirst();
       
       try {
         final Map<String, dynamic> dataMap = trophyData as Map<String, dynamic>;
@@ -606,11 +630,13 @@ class _GameScreenState extends State<GameScreen> {
         // Use rootOverlay: true to show above everything
         Overlay.of(context, rootOverlay: true).insert(overlayEntry);
         await completer.future;
-        await Future.delayed(const Duration(milliseconds: 300));
+        await Future.delayed(const Duration(milliseconds: 500));
       } catch (e) {
         debugPrint('Error showing trophy toast: $e');
       }
     }
+    
+    _isProcessingTrophies = false;
   }
 
   @override

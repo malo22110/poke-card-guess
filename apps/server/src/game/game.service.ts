@@ -537,6 +537,20 @@ export class GameService {
 
       await this.saveRoundResult(userId, currentCard, true);
 
+      // Check for realtime trophies (e.g. streaks, first win)
+      let unlockedTrophies: any[] = [];
+      try {
+        unlockedTrophies =
+          await this.trophiesService.checkAndAwardTrophies(userId);
+        if (unlockedTrophies.length > 0) {
+          console.log(
+            `[Realtime Trophies] User ${userId} unlocked ${unlockedTrophies.length} trophies`,
+          );
+        }
+      } catch (e) {
+        console.error(`Failed to check trophies for user ${userId}`, e);
+      }
+
       // Save detailed history
       const currentRoundHistory = lobby.history.get(lobby.currentRound) || [];
       currentRoundHistory.push({
@@ -560,6 +574,7 @@ export class GameService {
         currentRound: lobby.currentRound,
         totalRounds: lobby.config.rounds,
         playerStatuses: this.getRoundPlayerStatuses(lobby),
+        unlockedTrophies,
       };
 
       if (allFinished) {
@@ -957,13 +972,42 @@ export class GameService {
       },
     });
 
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        totalAttempts: { increment: 1 },
-        totalScore: { increment: correct ? 1 : 0 },
-      },
-    });
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { currentStreak: true, bestStreak: true },
+      });
+
+      if (user) {
+        let currentStreak = user.currentStreak;
+        let bestStreak = user.bestStreak;
+
+        if (correct) {
+          currentStreak += 1;
+          if (currentStreak > bestStreak) {
+            bestStreak = currentStreak;
+          }
+        } else {
+          currentStreak = 0;
+        }
+
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: {
+            totalAttempts: { increment: 1 },
+            // Maintain rudimentary totalScore increment here if desired,
+            // though session score is main source.
+            // We kept +1 in original code, so keeping it.
+            totalScore: { increment: correct ? 1 : 0 },
+            currentStreak,
+            bestStreak,
+            cardsGuessed: { increment: correct ? 1 : 0 },
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error updating user stats in saveRoundResult', error);
+    }
   }
 
   private async downloadImage(url: string): Promise<Buffer> {
