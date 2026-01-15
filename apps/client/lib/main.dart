@@ -17,6 +17,8 @@ import 'services/sound_service.dart';
 
 import 'widgets/trophy/trophy_listener.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   runApp(
     MultiProvider(
@@ -49,9 +51,13 @@ class MyApp extends StatelessWidget {
         }
 
         return MaterialApp(
+          navigatorKey: navigatorKey,
           title: 'PokeCardGuess',
           debugShowCheckedModeBanner: false,
-          builder: (context, child) => TrophyListener(child: child!),
+          builder: (context, child) => TrophyListener(
+            navigatorKey: navigatorKey,
+            child: child!,
+          ),
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
             useMaterial3: true,

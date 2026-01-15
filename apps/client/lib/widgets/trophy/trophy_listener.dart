@@ -8,8 +8,9 @@ import 'package:pokecardguess/widgets/trophy/trophy_toast.dart';
 
 class TrophyListener extends StatefulWidget {
   final Widget child;
+  final GlobalKey<NavigatorState>? navigatorKey;
 
-  const TrophyListener({super.key, required this.child});
+  const TrophyListener({super.key, required this.child, this.navigatorKey});
 
   @override
   State<TrophyListener> createState() => _TrophyListenerState();
@@ -48,7 +49,17 @@ class _TrophyListenerState extends State<TrophyListener> {
 
       try {
         final completer = Completer<void>();
-        late OverlayEntry overlayEntry;
+        OverlayEntry? overlayEntry;
+        
+        // Try getting overlay from navigator key first, then fallback to context
+        final overlayState = widget.navigatorKey?.currentState?.overlay ?? Overlay.of(context, rootOverlay: true);
+        
+        if (overlayState == null) {
+           debugPrint('Error showing trophy toast: No Overlay found');
+           // If we can't show it, maybe put it back or just skip? 
+           // For now, let's skip to avoid infinite loop of failure if overlay is permanently gone
+           continue; 
+        }
 
         SoundService().playSound(SoundService.trophy);
 
@@ -56,13 +67,13 @@ class _TrophyListenerState extends State<TrophyListener> {
           builder: (context) => TrophyUnlockToast(
             trophy: trophy,
             onDismiss: () {
-              overlayEntry.remove();
+              overlayEntry?.remove();
               completer.complete();
             },
           ),
         );
 
-        Overlay.of(context, rootOverlay: true).insert(overlayEntry);
+        overlayState.insert(overlayEntry);
         await completer.future;
         await Future.delayed(const Duration(milliseconds: 500));
       } catch (e) {
