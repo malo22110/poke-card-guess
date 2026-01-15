@@ -276,9 +276,10 @@ export class GameService {
       const score = lobby.scores.get(userId) || 0;
 
       // Compute round stats
-      const roundStats = [];
+      const roundStats: any[] = [];
       let cardsGuessed = 0;
       let highestRoundScoreInGame = 0;
+      let fastestGuessInGame = 999.0;
 
       for (let round = 1; round <= lobby.currentRound; round++) {
         const roundHistory = lobby.history.get(round) || [];
@@ -331,6 +332,7 @@ export class GameService {
           where: { id: userId },
           data: {
             totalScore: { increment: score },
+            totalAttempts: { increment: lobby.config.rounds },
             gamesPlayed: { increment: 1 },
             gamesWon: { increment: isWinner ? 1 : 0 },
             cardsGuessed: { increment: cardsGuessed },

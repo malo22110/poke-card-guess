@@ -28,29 +28,24 @@
 - ✅ **Donation Trophies** - POST /users/donation endpoint
   - Supporter ($1), Generous ($5), Patron ($20), Benefactor ($50)
 
-### Priority 2 - Medium Complexity (Partial) ✅
+### Priority 2 - Medium Complexity (Complete) ✅
 
 - ✅ **Set Trophies** - Tracks uniqueSetsGuessed (JSON array)
   - Set Explorer (10 sets)
   - Set Connoisseur (25 sets)
   - Set Master (50 sets)
   - Complete Collection (100 sets)
+- ✅ **Per-Round Score Tracking** - Tracks bestRoundScore
+  - Perfect Round (25,000+ points in single round)
+- ✅ **Speed Trophies** - Tracks fastestGuess
+  - Speed Demon (<5s)
+  - Lightning Fast (<2s)
+- ✅ **Card Rarity Tracking** - Tracks rarityStats
+  - Rare Hunter (50)
+  - Ultra Rare Collector (25)
+  - Secret Seeker (10)
 
 ## 🚧 IN PROGRESS / TODO
-
-### Priority 2 - Remaining Items
-
-- ❌ **Per-Round Score Tracking** - For "Perfect Round" trophy
-  - Need: Store individual round scores in GameSession
-  - Trophy: Perfect Round (25,000+ points in single round)
-
-- ❌ **Per-Round Timing** - For speed trophies
-  - Need: Track time per guess/round
-  - Trophies: Speed Demon (<5s), Lightning Fast (<2s)
-
-- ❌ **Card Rarity Tracking**
-  - Need: Fetch rarity from TCGdex API and track counts
-  - Trophies: Rare Hunter (50), Ultra Rare Collector (25), Secret Seeker (10)
 
 ### Priority 3 - Complex Features
 
@@ -67,8 +62,8 @@
   - Trophies: Perfectionist (100% in 10+ rounds), Flawless Victory (100% in 10+ rounds)
 
 - ❌ **Time-Based Trophies**
-  - Need: Track when games are played
-  - Trophy: Weekend Warrior (20 games on weekend)
+  - Need: checkTimeBasedTrophy logic
+  - Trophies: Weekend Warrior, Night Owl, Early Bird (logic partly exists)
 
 ## 📊 Trophy Status by Category
 
@@ -83,9 +78,8 @@
 | Social        | 1      | 1 ✅    | 0          | 100%       |
 | Donation      | 4      | 4 ✅    | 0          | 100%       |
 | Set           | 4      | 4 ✅    | 0          | 100%       |
-| Special       | 10     | 2       | 8 ❌       | 20%        |
+| Special       | 10     | 4       | 6 ❌       | 40%        |
 | Leaderboard   | 5      | 0       | 5 ❌       | 0%         |
-| Rarity        | 3      | 0       | 3 ❌       | 0%         |
 | Speed         | 3      | 0       | 3 ❌       | 0%         |
 | **TOTAL**     | **54** | **39**  | **15**     | **72%**    |
 
