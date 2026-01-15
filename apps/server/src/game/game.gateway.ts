@@ -19,6 +19,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
+  private progressiveRevealIntervals: Map<string, NodeJS.Timeout> = new Map();
+
   constructor(private readonly gameService: GameService) {}
 
   handleConnection(client: Socket) {
@@ -58,6 +60,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const result = await this.gameService.forceEndRound(lobbyId);
     if (!result) return;
 
+    // Stop progressive reveal when round ends
+    this.stopProgressiveReveal(lobbyId);
+
     this.server.to(lobbyId).emit('roundFinished', {
       winner: null,
       result: result,
@@ -83,12 +88,42 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       lobby.roundStartTime = Date.now();
 
       this.server.to(lobbyId).emit('nextRound', nextRoundData);
+
+      // Start progressive reveal for this round
+      this.startProgressiveReveal(lobbyId);
+
       this.gameService.setRoundTimer(
         lobbyId,
         () => this.handleRoundTimeout(lobbyId),
         30000,
       );
     }, 3000);
+  }
+
+  private startProgressiveReveal(lobbyId: string) {
+    // Clear any existing interval
+    this.stopProgressiveReveal(lobbyId);
+
+    // Emit progressive reveals every 500ms for smooth animation
+    const interval = setInterval(async () => {
+      const revealData = await this.gameService.getProgressiveReveal(lobbyId);
+      if (revealData) {
+        this.server.to(lobbyId).emit('progressiveReveal', revealData);
+      } else {
+        // Stop if lobby is no longer active
+        this.stopProgressiveReveal(lobbyId);
+      }
+    }, 500);
+
+    this.progressiveRevealIntervals.set(lobbyId, interval);
+  }
+
+  private stopProgressiveReveal(lobbyId: string) {
+    const interval = this.progressiveRevealIntervals.get(lobbyId);
+    if (interval) {
+      clearInterval(interval);
+      this.progressiveRevealIntervals.delete(lobbyId);
+    }
   }
 
   @SubscribeMessage('startGame')
@@ -103,6 +138,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
       // Broadcast to EVERYONE in the lobby that the game has started
       this.server.to(data.lobbyId).emit('gameStarted', result);
+
+      // Start progressive reveal for the first round
+      this.startProgressiveReveal(data.lobbyId);
 
       // Start timer for the first round
       this.gameService.setRoundTimer(
@@ -135,6 +173,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if ((result as any).correct && (result as any).roundFinished) {
         this.gameService.clearRoundTimer(data.lobbyId);
 
+        // Stop progressive reveal when round ends
+        this.stopProgressiveReveal(data.lobbyId);
+
         this.server.to(data.lobbyId).emit('roundFinished', {
           winner: null,
           result: result,
@@ -164,6 +205,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       if ((result as any).roundFinished) {
         this.gameService.clearRoundTimer(data.lobbyId);
+
+        // Stop progressive reveal when round ends
+        this.stopProgressiveReveal(data.lobbyId);
 
         this.server.to(data.lobbyId).emit('roundFinished', {
           winner: null,

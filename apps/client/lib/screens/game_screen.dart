@@ -397,6 +397,16 @@ class _GameScreenState extends State<GameScreen> {
        }
     });
 
+    _socketService.socket.on('progressiveReveal', (data) {
+       if (mounted) {
+         setState(() {
+           if (data['croppedImage'] != null) {
+             _croppedImage = data['croppedImage'];
+           }
+         });
+       }
+    });
+
     _scoreboardSub = _socketService.scoreboardUpdateStream.listen((data) {
        if (mounted) {
          setState(() {

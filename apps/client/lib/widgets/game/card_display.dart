@@ -95,75 +95,32 @@ class _CardDisplayState extends State<CardDisplay> with SingleTickerProviderStat
   Widget _buildCroppedCard() {
     if (widget.croppedImage == null) return const SizedBox.shrink();
 
+    // Strip the data URL prefix if present (e.g., "data:image/png;base64,")
+    String base64String = widget.croppedImage!;
+    if (base64String.contains(',')) {
+      base64String = base64String.split(',').last;
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Stack(
-        children: [
-          // Show the cropped image at the bottom
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Image.memory(
-              base64Decode(widget.croppedImage!),
-              fit: BoxFit.contain,
-              gaplessPlayback: true,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  height: 150,
-                  color: Colors.grey[300],
-                  child: const Center(
-                    child: Icon(Icons.error, size: 50),
-                  ),
-                );
-              },
-            ),
-          ),
-          // Gradient overlay at the top to create mystery effect
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 150, // Leave space for the cropped image
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFF1a237e),
-                    const Color(0xFF1a237e).withOpacity(0.9),
-                    Colors.transparent,
-                  ],
-                ),
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Image.memory(
+          base64Decode(base64String),
+          fit: BoxFit.contain,
+          gaplessPlayback: true,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              color: Colors.grey[300],
+              child: const Center(
+                child: Icon(Icons.error, size: 50),
               ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.help_outline,
-                      size: 80,
-                      color: Colors.white.withOpacity(0.5),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Who\'s that Pokemon?',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }

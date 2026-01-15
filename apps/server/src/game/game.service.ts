@@ -1075,18 +1075,58 @@ export class GameService {
     return Buffer.from(response.data);
   }
 
-  private async cropImage(buffer: Buffer): Promise<string> {
+  private async cropImage(
+    buffer: Buffer,
+    revealPercentage: number = 0.15,
+  ): Promise<string> {
     const image = sharp(buffer);
     const metadata = await image.metadata();
     if (!metadata.width || !metadata.height) {
       throw new Error('Could not get image metadata');
     }
-    const cropHeight = Math.floor(metadata.height * 0.1);
+
+    // Calculate how much of the card to reveal (from bottom)
+    const cropHeight = Math.floor(metadata.height * revealPercentage);
     const top = metadata.height - cropHeight;
+
     const croppedBuffer = await image
       .extract({ left: 0, top: top, width: metadata.width, height: cropHeight })
       .toBuffer();
+
     return croppedBuffer.toString('base64');
+  }
+
+  async getProgressiveReveal(
+    lobbyId: string,
+  ): Promise<{ croppedImage: string; revealPercentage: number } | null> {
+    const lobby = this.lobbies.get(lobbyId);
+    if (!lobby || lobby.status !== 'PLAYING' || lobby.currentRound === 0) {
+      return null;
+    }
+
+    const card = lobby.cards[lobby.currentRound - 1];
+    if (!card) return null;
+
+    // Calculate elapsed time since round start
+    const elapsedSeconds = (Date.now() - lobby.roundStartTime) / 1000;
+
+    // Progressive reveal: start at 15%, increase to 100% over 30 seconds
+    // Formula: 15% + (85% * elapsedSeconds / 30)
+    const revealPercentage = Math.min(0.15 + (elapsedSeconds / 30) * 0.85, 1.0);
+
+    // Download and crop the image with the current reveal percentage
+    try {
+      const imageBuffer = await this.downloadImage(card.fullImageUrl);
+      const croppedImage = await this.cropImage(imageBuffer, revealPercentage);
+
+      return {
+        croppedImage: `data:image/png;base64,${croppedImage}`,
+        revealPercentage: Math.round(revealPercentage * 100) / 100,
+      };
+    } catch (error) {
+      console.error('Error generating progressive reveal:', error);
+      return null;
+    }
   }
 
   private normalizeString(str: string): string {
