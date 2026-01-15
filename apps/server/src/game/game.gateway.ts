@@ -79,6 +79,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return;
       }
 
+      // Set round start time RIGHT BEFORE sending data to clients
+      lobby.roundStartTime = Date.now();
+
       this.server.to(lobbyId).emit('nextRound', nextRoundData);
       this.gameService.setRoundTimer(
         lobbyId,

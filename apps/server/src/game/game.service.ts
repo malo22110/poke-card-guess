@@ -631,7 +631,7 @@ export class GameService {
           Object.fromEntries(lobby.scores),
         );
         lobby.currentRound++;
-        lobby.roundStartTime = Date.now();
+        // roundStartTime will be set in scheduleNextRound when data is sent
         lobby.roundResults.clear();
         console.log(`[Round Advance] Advanced to round ${lobby.currentRound}`);
       }
@@ -686,7 +686,7 @@ export class GameService {
 
     if (allFinished) {
       lobby.currentRound++;
-      lobby.roundStartTime = Date.now();
+      // roundStartTime will be set in scheduleNextRound when data is sent
       lobby.roundResults.clear();
     }
 
