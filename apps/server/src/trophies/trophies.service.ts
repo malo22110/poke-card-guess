@@ -91,10 +91,24 @@ export class TrophiesService {
       case 'rarity':
         try {
           const stats = JSON.parse(user.rarityStats || '{}');
+
+          if (key === 'rarity_master') {
+            return Object.keys(stats).filter((k) => stats[k] > 0).length;
+          }
+
           let targetRarity = '';
           if (key === 'rare_hunter') targetRarity = 'Rare';
           else if (key === 'ultra_rare_collector') targetRarity = 'Ultra Rare';
           else if (key === 'secret_seeker') targetRarity = 'Secret Rare';
+          else if (key === 'common_collector') targetRarity = 'Common';
+          else if (key === 'uncommon_collector') targetRarity = 'Uncommon';
+          else if (key === 'double_rare_hunter') targetRarity = 'Double Rare';
+          else if (key === 'illustration_admirer')
+            targetRarity = 'Illustration Rare';
+          else if (key === 'special_investigator')
+            targetRarity = 'Special Illustration Rare';
+          else if (key === 'hyper_hunter') targetRarity = 'Hyper Rare';
+
           if (targetRarity) return stats[targetRarity] || 0;
           return stats[key] || 0;
         } catch {
@@ -402,10 +416,26 @@ export class TrophiesService {
 
     try {
       const stats = JSON.parse(user.rarityStats);
+
+      if (key === 'rarity_master') {
+        const uniqueRarities = Object.keys(stats).filter(
+          (k) => stats[k] > 0,
+        ).length;
+        return uniqueRarities >= requirement;
+      }
+
       let targetRarity = '';
       if (key === 'rare_hunter') targetRarity = 'Rare';
       else if (key === 'ultra_rare_collector') targetRarity = 'Ultra Rare';
       else if (key === 'secret_seeker') targetRarity = 'Secret Rare';
+      else if (key === 'common_collector') targetRarity = 'Common';
+      else if (key === 'uncommon_collector') targetRarity = 'Uncommon';
+      else if (key === 'double_rare_hunter') targetRarity = 'Double Rare';
+      else if (key === 'illustration_admirer')
+        targetRarity = 'Illustration Rare';
+      else if (key === 'special_investigator')
+        targetRarity = 'Special Illustration Rare';
+      else if (key === 'hyper_hunter') targetRarity = 'Hyper Rare';
 
       const userCount = targetRarity
         ? stats[targetRarity] || 0
