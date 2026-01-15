@@ -1077,7 +1077,7 @@ export class GameService {
 
   private async cropImage(
     buffer: Buffer,
-    revealPercentage: number = 0.15,
+    revealPercentage: number = 0.05,
   ): Promise<string> {
     const image = sharp(buffer);
     const metadata = await image.metadata();
@@ -1110,9 +1110,14 @@ export class GameService {
     // Calculate elapsed time since round start
     const elapsedSeconds = (Date.now() - lobby.roundStartTime) / 1000;
 
-    // Progressive reveal: start at 15%, increase to 100% over 30 seconds
-    // Formula: 15% + (85% * elapsedSeconds / 30)
-    const revealPercentage = Math.min(0.15 + (elapsedSeconds / 30) * 0.85, 1.0);
+    // Progressive reveal: start at 5%, wait 3s, then increase to 100% over remaining 27s
+    let revealPercentage = 0.05;
+
+    if (elapsedSeconds > 3) {
+      // Linear progression from 5% to 100% over the remaining 27 seconds
+      const progress = (elapsedSeconds - 3) / 27;
+      revealPercentage = Math.min(0.05 + progress * 0.95, 1.0);
+    }
 
     // Download and crop the image with the current reveal percentage
     try {
