@@ -16,6 +16,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _userName = 'Loading...';
   String? _userPicture;
   Map<String, dynamic> _socials = {};
+  int _gamesPlayed = 0;
+  int _gamesWon = 0;
+  int _currentStreak = 0;
+  int _bestStreak = 0;
+  int _cardsGuessed = 0;
+  int _highScore = 0;
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -74,6 +80,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           setState(() {
             _userName = data['name'] ?? 'User';
             _userPicture = data['picture'];
+            _gamesPlayed = data['gamesPlayed'] ?? 0;
+            _gamesWon = data['gamesWon'] ?? 0;
+            _currentStreak = data['currentStreak'] ?? 0;
+            _bestStreak = data['bestStreak'] ?? 0;
+            _cardsGuessed = data['cardsGuessed'] ?? 0;
+            _highScore = data['highScore'] ?? 0;
             _socials = loadedSocials;
             _instagramController.text = _socials['instagram'] ?? '';
             _tiktokController.text = _socials['tiktok'] ?? '';
@@ -182,6 +194,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: Colors.white,
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      _buildStatCard('Games', '$_gamesPlayed', Icons.videogame_asset, Colors.blue),
+                      _buildStatCard('Wins', '$_gamesWon', Icons.emoji_events, Colors.amber),
+                      _buildStatCard('Streak', '$_currentStreak', Icons.local_fire_department, Colors.orange),
+                      _buildStatCard('Best Streak', '$_bestStreak', Icons.whatshot, Colors.deepOrange),
+                      _buildStatCard('Cards', '$_cardsGuessed', Icons.style, Colors.purple),
+                      _buildStatCard('High Score', '$_highScore', Icons.stars, Colors.teal),
+                    ],
+                  ),
                   const SizedBox(height: 32),
                   
                   if (widget.authToken != null) ...[
@@ -235,6 +261,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      width: 100,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 11,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
