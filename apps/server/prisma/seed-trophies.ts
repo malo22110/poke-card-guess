@@ -477,7 +477,7 @@ const trophies = [
   {
     key: 'fast_learner',
     name: 'Fast Learner',
-    description: 'Complete a game in under 5 minutes',
+    description: 'Complete a game in under 5 minutes (minimum 10 rounds)',
     category: 'speed',
     tier: 'silver',
     icon: '⚡',

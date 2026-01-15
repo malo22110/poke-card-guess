@@ -113,7 +113,10 @@ export class TrophiesService {
     }
   }
 
-  async checkAndAwardTrophies(userId: string) {
+  async checkAndAwardTrophies(
+    userId: string,
+    options?: { category?: string; excludeCategories?: string[] },
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -134,6 +137,17 @@ export class TrophiesService {
     for (const trophy of allTrophies) {
       if (unlockedTrophyIds.has(trophy.id)) {
         continue; // Already unlocked
+      }
+
+      if (options?.category && trophy.category !== options.category) {
+        continue;
+      }
+
+      if (
+        options?.excludeCategories &&
+        options.excludeCategories.includes(trophy.category)
+      ) {
+        continue;
       }
 
       const shouldUnlock = await this.checkTrophyRequirement(user, trophy);
@@ -371,7 +385,7 @@ export class TrophiesService {
     key: string,
     requirement: number,
   ): Promise<boolean> {
-    if (key === 'speedrunner') {
+    if (key === 'speedrunner' || key === 'fast_learner') {
       const bestTime = await this.getBestGameTime(user.id);
       return bestTime <= requirement;
     }
