@@ -385,18 +385,7 @@ export class TrophiesService {
     key: string,
     requirement: number,
   ): Promise<boolean> {
-    if (key === 'speedrunner' || key === 'fast_learner') {
-      const bestTime = await this.getBestGameTime(user.id);
-      return bestTime <= requirement;
-    }
-
-    if (key === 'time_attack_master') {
-      if (user.gamesPlayed < 20) return false;
-      const averageTime = await this.getAverageGuessTime(user.id);
-      return averageTime <= requirement;
-    }
-
-    // Default check based on fastest guess time
+    // All speed trophies now check fastest single guess time
     // Requirement is in seconds, lower is better
     return (user.fastestGuess || 999.0) <= requirement;
   }

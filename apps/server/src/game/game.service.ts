@@ -579,9 +579,13 @@ export class GameService {
           if (t) unlockedTrophies.push(t);
         }
 
-        // 2. Check Stats Trophies
-        const statsTrophies =
-          await this.trophiesService.checkAndAwardTrophies(userId);
+        // 2. Check Stats Trophies (excluding long-term/game-end categories)
+        const statsTrophies = await this.trophiesService.checkAndAwardTrophies(
+          userId,
+          {
+            excludeCategories: ['leaderboard', 'wins', 'games'],
+          },
+        );
         unlockedTrophies.push(...statsTrophies);
         if (unlockedTrophies.length > 0) {
           console.log(
