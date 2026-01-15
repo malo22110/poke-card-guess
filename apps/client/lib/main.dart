@@ -56,19 +56,27 @@ class MyApp extends StatelessWidget {
           ),
           onGenerateRoute: (settings) {
             final uri = Uri.parse(settings.name ?? '/');
-            final args = (settings.arguments as Map<String, dynamic>?) ?? <String, dynamic>{};
+            // Create a new mutable map to properly handle type mixing (e.g., bool from code, string from URI)
+            final args = <String, dynamic>{};
+            
+            if (settings.arguments != null) {
+              // We must manually copy entries if casting is unsafe, or strict map creation
+              // Map.from works well to convert valid source maps
+              final passedArgs = settings.arguments as Map;
+              passedArgs.forEach((key, value) {
+                if (key is String) args[key] = value;
+              });
+            }
             args.addAll(uri.queryParameters);
 
             // Reconstruct primitives
-             if (args['isHost'] == 'true') args['isHost'] = true;
-             if (args['isHost'] == 'false') args['isHost'] = false;
-             if (args['isGuest'] == 'true') args['isGuest'] = true;
-             if (args['isGuest'] == 'false') args['isGuest'] = false;
+            // Removed manual boolean conversion to avoid TypeErrors
+            // checking 'true' strings should be done in the destination screens
 
             // Route Guard Logic
             // If user is NOT logged in (neither guest nor auth), restricted to Login or public pages if any
             // Actually, if not logged in, we redirect to Login for almost everything except maybe Terms?
-            final publicRoutes = ['/login', '/terms', '/auth_callback'];
+            final publicRoutes = ['/login', '/terms', '/auth_callback', '/profile-setup'];
             
             if (authService.currentUser == null && !publicRoutes.contains(uri.path)) {
                return MaterialPageRoute(builder: (_) => const LoginScreen(), settings: const RouteSettings(name: '/login'));

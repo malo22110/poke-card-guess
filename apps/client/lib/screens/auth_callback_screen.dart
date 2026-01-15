@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../services/auth_storage_service.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
 import 'package:pokecardguess/config/app_config.dart';
 
 class AuthCallbackScreen extends StatefulWidget {
@@ -31,6 +32,8 @@ class _AuthCallbackScreenState extends State<AuthCallbackScreen> {
       _errorMessage = null;
     });
 
+    final authService = Provider.of<AuthService>(context, listen: false);
+
     try {
       final response = await http.get(
         Uri.parse('${AppConfig.apiBaseUrl}/users/me'),
@@ -39,31 +42,22 @@ class _AuthCallbackScreenState extends State<AuthCallbackScreen> {
         },
       );
 
-
       if (response.statusCode == 200) {
         final user = jsonDecode(response.body);
-        
-        // Save session securely
         final profileCompleted = user['profileCompleted'] == true;
-        await AuthStorageService().saveSession(
-          token: widget.token,
-          userId: user['id']?.toString(),
-          userName: user['name']?.toString(),
-          profileCompleted: profileCompleted,
-        );
-
-        if (!mounted) return;
-
+        
         if (profileCompleted) {
-          Navigator.of(context).pushReplacementNamed(
-            '/lobby',
-            arguments: {'authToken': widget.token},
-          );
+           await authService.login(widget.token);
+           if (mounted) {
+              Navigator.of(context).pushReplacementNamed('/lobby');
+           }
         } else {
-           Navigator.of(context).pushReplacementNamed(
-            '/profile-setup',
-            arguments: {'authToken': widget.token},
-          );
+           if (mounted) {
+             Navigator.of(context).pushReplacementNamed(
+              '/profile-setup',
+              arguments: {'authToken': widget.token},
+            );
+           }
         }
       } else {
         setState(() {

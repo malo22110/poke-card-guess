@@ -48,7 +48,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
     
     if (args != null && args['lobbyId'] != null) {
       lobbyId = args['lobbyId'];
-      isHost = args['isHost'] == true; // Ensure bool
+      isHost = args['isHost'] == true || args['isHost'] == 'true';
       authToken = args['authToken'];
       guestId = args['guestId']; 
       _guestName = args['guestName']; // Read guestName

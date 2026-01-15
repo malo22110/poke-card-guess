@@ -341,7 +341,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
            });
            Navigator.of(context).pushReplacementNamed(
              uri.toString(), 
-             arguments: {'authToken': widget.authToken}
+             arguments: {'authToken': _authToken}
            );
         }
       } else {
@@ -400,86 +400,99 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
       return const Center(child: Text('No game modes available', style: TextStyle(color: Colors.white)));
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _gameModes.length,
-      itemBuilder: (context, index) {
-        final mode = _gameModes[index];
-        final isSelected = _selectedGameModeId == mode['id'];
-        final isOfficial = mode['isOfficial'] == true;
-        
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedGameModeId = mode['id'];
-            });
-          },
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 16),
+    return Column(
+      children: [
+        if (_error != null)
+           Container(
+             padding: const EdgeInsets.all(12),
+             color: Colors.red.withOpacity(0.1),
+             width: double.infinity,
+             child: Text(_error!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
+           ),
+        Expanded(
+          child: ListView.builder(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isSelected ? Colors.amber.withOpacity(0.2) : Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected ? Colors.amber : Colors.transparent,
-                width: 2,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    if (isOfficial) 
-                      const Padding(
-                        padding: EdgeInsets.only(right: 8.0),
-                        child: Icon(Icons.verified, color: Colors.blueAccent, size: 20),
-                      ),
-                    Text(
-                      mode['name'],
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+            itemCount: _gameModes.length,
+            itemBuilder: (context, index) {
+              final mode = _gameModes[index];
+              final isSelected = _selectedGameModeId == mode['id'];
+              final isOfficial = mode['isOfficial'] == true;
+              
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedGameModeId = mode['id'];
+                  });
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.amber.withOpacity(0.2) : Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected ? Colors.amber : Colors.transparent,
+                      width: 2,
                     ),
-                    const Spacer(),
-                    if (!isOfficial)
-                      InkWell(
-                        onTap: () => _upvoteGameMode(mode['id']),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.thumb_up, size: 16, color: Colors.amber),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${mode['_count']?['upvotes'] ?? 0}',
-                                style: const TextStyle(color: Colors.white70),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  mode['description'] ?? 'No description',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 12),
-                if (mode['creator'] != null)
-                  Text(
-                    'Created by ${mode['creator']['name']}',
-                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
                   ),
-              ],
-            ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (isOfficial) 
+                            const Padding(
+                              padding: EdgeInsets.only(right: 8.0),
+                              child: Icon(Icons.verified, color: Colors.blueAccent, size: 20),
+                            ),
+                          Text(
+                            mode['name'],
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (!isOfficial)
+                            InkWell(
+                              onTap: () => _upvoteGameMode(mode['id']),
+                              borderRadius: BorderRadius.circular(12),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.thumb_up, size: 16, color: Colors.amber),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${mode['_count']?['upvotes'] ?? 0}',
+                                      style: const TextStyle(color: Colors.white70),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        mode['description'] ?? 'No description',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 12),
+                      if (mode['creator'] != null)
+                        Text(
+                          'Created by ${mode['creator']['name']}',
+                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 

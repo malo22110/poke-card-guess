@@ -80,7 +80,7 @@ class LoginScreen extends StatelessWidget {
                       // Navigate to ProfileSetupScreen to set guest name
                       Navigator.of(context).pushNamed(
                         '/profile-setup',
-                        arguments: {'isGuest': 'true'},
+                        arguments: {'isGuest': true},
                       );
                     },
                     child: Text(
