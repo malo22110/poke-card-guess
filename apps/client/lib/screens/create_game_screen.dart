@@ -45,6 +45,9 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
   // Search functionality
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  
+  final TextEditingController _gameModeSearchController = TextEditingController();
+  String _gameModeSearchQuery = '';
 
   // Define common rarities to exclude by default
   final List<String> _commonRarities = [
@@ -117,6 +120,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
   void dispose() {
     _debounce?.cancel();
     _searchController.dispose();
+    _gameModeSearchController.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -219,8 +223,6 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
     if (!mounted) return;
     
     // Don't fetch if filter is invalid (no sets, etc, unless filtering rules allow empty sets = all?)
-    // GameService supports empty sets to mean filtered by rarity only? No, getPreviewCards checks. 
-    // And if sets is not empty.
     
     setState(() {
       _isLoadingPreview = true;
@@ -256,8 +258,6 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
       if (mounted) {
         setState(() {
           _isLoadingPreview = false; 
-          // Keep old preview or clear? defaulting to keeping or empty
-          // _previewCards = []; 
         });
       }
     }
@@ -284,6 +284,209 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
       _selectedRarities = [];
     });
     _debouncedFetchPreview();
+  }
+ 
+  Widget _buildPresetsTab() {
+    if (_isLoadingGameModes) {
+      return const Center(child: CircularProgressIndicator(color: Colors.white));
+    }
+    
+    // Filter modes based on search query
+    final filteredModes = _gameModes.where((mode) {
+      if (_gameModeSearchQuery.isEmpty) return true;
+      final query = _gameModeSearchQuery.toLowerCase();
+      final name = (mode['name'] ?? '').toString().toLowerCase();
+      final description = (mode['description'] ?? '').toString().toLowerCase();
+      return name.contains(query) || description.contains(query);
+    }).toList();
+
+    if (_gameModes.isEmpty) {
+      return const Center(child: Text('No game modes available', style: TextStyle(color: Colors.white)));
+    }
+
+    return Column(
+      children: [
+        if (_error != null)
+           Container(
+             padding: const EdgeInsets.all(12),
+             color: Colors.red.withOpacity(0.1),
+             width: double.infinity,
+             child: Text(_error!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
+           ),
+        
+        // Search Bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: TextField(
+            controller: _gameModeSearchController,
+            onChanged: (value) => setState(() => _gameModeSearchQuery = value),
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Search game modes...',
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+              prefixIcon: const Icon(Icons.search, color: Colors.white70),
+              suffixIcon: _gameModeSearchQuery.isNotEmpty 
+                ? IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.white54),
+                    onPressed: () {
+                      _gameModeSearchController.clear();
+                      setState(() => _gameModeSearchQuery = '');
+                    },
+                  ) 
+                : null,
+              filled: true,
+              fillColor: Colors.black.withOpacity(0.2),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+          ),
+        ),
+
+        if (filteredModes.isEmpty)
+           const Expanded(
+             child: Center(
+               child: Text('No matching game modes found', style: TextStyle(color: Colors.white70)),
+             ),
+           ),
+
+        if (filteredModes.isNotEmpty)
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: filteredModes.length,
+            itemBuilder: (context, index) {
+              final mode = filteredModes[index];
+              final isSelected = _selectedGameModeId == mode['id'];
+              final isOfficial = mode['isOfficial'] == true;
+              
+              final authService = Provider.of<AuthService>(context, listen: false);
+              final currentUserId = authService.currentUser?.id;
+              final isCreator = currentUserId != null && mode['creatorId'] == currentUserId;
+              
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedGameModeId = mode['id'];
+                  });
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.amber.withOpacity(0.2) : Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected ? Colors.amber : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (isOfficial) 
+                            const Padding(
+                              padding: EdgeInsets.only(right: 8.0),
+                              child: Icon(Icons.verified, color: Colors.blueAccent, size: 20),
+                            ),
+                          Expanded(
+                            child: Text(
+                              mode['name'],
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (!isOfficial)
+                            InkWell(
+                              onTap: () => _upvoteGameMode(mode['id']),
+                              borderRadius: BorderRadius.circular(12),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.thumb_up, size: 16, color: Colors.amber),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${mode['_count']?['upvotes'] ?? 0}',
+                                      style: const TextStyle(color: Colors.white70),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          
+                          if (isCreator)
+                             Padding(
+                               padding: const EdgeInsets.only(left: 8.0),
+                               child: InkWell(
+                                 onTap: () => _deleteGameMode(mode['id']),
+                                 borderRadius: BorderRadius.circular(12),
+                                 child: Padding(
+                                   padding: const EdgeInsets.all(4),
+                                   child: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                                 ),
+                               ),
+                             ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        mode['description'] ?? 'No description',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 12),
+                      if (mode['creator'] != null)
+                        Text(
+                          'Created by ${mode['creator']['name']}',
+                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _upvoteGameMode(String id) async {
+    if (_authToken == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to upvote modes')),
+      );
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/gamemodes/$id/upvote'),
+        headers: {'Authorization': 'Bearer $_authToken'},
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        try {
+           final data = jsonDecode(response.body);
+           if (data['newTrophies'] != null) {
+              TrophyService().showTrophies(data['newTrophies']);
+           }
+        } catch (_) {}
+        
+        // Toggle optimistic update or just refresh
+        _fetchGameModes(); 
+      }
+    } catch (e) {
+      print('Error upvoting: $e');
+    }
   }
 
   Future<void> _createGame() async {
@@ -448,158 +651,6 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
         setState(() => _isLoadingGameModes = false);
       }
-    }
-  }
-
-  Widget _buildPresetsTab() {
-    if (_isLoadingGameModes) {
-      return const Center(child: CircularProgressIndicator(color: Colors.white));
-    }
-
-    if (_gameModes.isEmpty) {
-      return const Center(child: Text('No game modes available', style: TextStyle(color: Colors.white)));
-    }
-
-    return Column(
-      children: [
-        if (_error != null)
-           Container(
-             padding: const EdgeInsets.all(12),
-             color: Colors.red.withOpacity(0.1),
-             width: double.infinity,
-             child: Text(_error!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
-           ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _gameModes.length,
-            itemBuilder: (context, index) {
-              final mode = _gameModes[index];
-              final isSelected = _selectedGameModeId == mode['id'];
-              final isOfficial = mode['isOfficial'] == true;
-              
-              final authService = Provider.of<AuthService>(context, listen: false);
-              final currentUserId = authService.currentUser?.id;
-              final isCreator = currentUserId != null && mode['creatorId'] == currentUserId;
-              
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedGameModeId = mode['id'];
-                  });
-                },
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.amber.withOpacity(0.2) : Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSelected ? Colors.amber : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          if (isOfficial) 
-                            const Padding(
-                              padding: EdgeInsets.only(right: 8.0),
-                              child: Icon(Icons.verified, color: Colors.blueAccent, size: 20),
-                            ),
-                          Text(
-                            mode['name'],
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Spacer(),
-                          if (!isOfficial)
-                            InkWell(
-                              onTap: () => _upvoteGameMode(mode['id']),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.thumb_up, size: 16, color: Colors.amber),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${mode['_count']?['upvotes'] ?? 0}',
-                                      style: const TextStyle(color: Colors.white70),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          
-                          if (isCreator)
-                             Padding(
-                               padding: const EdgeInsets.only(left: 8.0),
-                               child: InkWell(
-                                 onTap: () => _deleteGameMode(mode['id']),
-                                 borderRadius: BorderRadius.circular(12),
-                                 child: Padding(
-                                   padding: const EdgeInsets.all(4),
-                                   child: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
-                                 ),
-                               ),
-                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        mode['description'] ?? 'No description',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      const SizedBox(height: 12),
-                      if (mode['creator'] != null)
-                        Text(
-                          'Created by ${mode['creator']['name']}',
-                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _upvoteGameMode(String id) async {
-    if (_authToken == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in to upvote modes')),
-      );
-      return;
-    }
-
-    try {
-      final response = await http.post(
-        Uri.parse('${AppConfig.apiBaseUrl}/gamemodes/$id/upvote'),
-        headers: {'Authorization': 'Bearer $_authToken'},
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        try {
-           final data = jsonDecode(response.body);
-           if (data['newTrophies'] != null) {
-              TrophyService().showTrophies(data['newTrophies']);
-           }
-        } catch (_) {}
-        
-        // Toggle optimistic update or just refresh
-        _fetchGameModes(); 
-      }
-    } catch (e) {
-      print('Error upvoting: $e');
     }
   }
 
