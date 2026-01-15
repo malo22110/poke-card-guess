@@ -240,24 +240,6 @@ const trophies = [
     requirement: 25000,
   },
   {
-    key: 'speed_demon',
-    name: 'Speed Demon',
-    description: 'Guess a card in under 3 seconds',
-    category: 'special',
-    tier: 'special',
-    icon: '⚡',
-    requirement: 3,
-  },
-  {
-    key: 'lightning_fast',
-    name: 'Lightning Fast',
-    description: 'Guess a card in under 2 seconds',
-    category: 'special',
-    tier: 'special',
-    icon: '⚡',
-    requirement: 2,
-  },
-  {
     key: 'perfectionist',
     name: 'Perfectionist',
     description: 'Complete a game with 100% accuracy',
@@ -473,7 +455,7 @@ const trophies = [
     requirement: 100,
   },
 
-  // Speed Trophies (3)
+  // Speed Trophies (4)
   {
     key: 'fast_learner',
     name: 'Quick Thinker',
@@ -482,6 +464,15 @@ const trophies = [
     tier: 'silver',
     icon: '⚡',
     requirement: 5,
+  },
+  {
+    key: 'speed_demon',
+    name: 'Speed Demon',
+    description: 'Correctly guess a card in under 3 seconds',
+    category: 'speed',
+    tier: 'gold',
+    icon: '⚡',
+    requirement: 3,
   },
   {
     key: 'speedrunner',
@@ -495,11 +486,11 @@ const trophies = [
   {
     key: 'reflex_master',
     name: 'Reflex Master',
-    description: 'Correctly guess a card in under 1 second',
+    description: 'Correctly guess a card in under 1.5 seconds',
     category: 'speed',
     tier: 'diamond',
     icon: '⚡',
-    requirement: 1,
+    requirement: 1.5,
   },
 
   // Donation Trophies (4)
