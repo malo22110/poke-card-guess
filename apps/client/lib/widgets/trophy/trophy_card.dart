@@ -4,7 +4,7 @@ import 'package:pokecardguess/models/trophy.dart';
 class TrophyCard extends StatelessWidget {
   final Trophy trophy;
   final bool isUnlocked;
-  final int? progress;
+  final num? progress;
   final DateTime? unlockedAt;
 
   const TrophyCard({
@@ -131,29 +131,58 @@ class TrophyCard extends StatelessWidget {
 
           // 3. Compact Trailing Status
           if (isLocked && progress != null) ...[
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '$progress/${trophy.requirement}',
-                  style: TextStyle(fontSize: 9, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 2),
-                SizedBox(
-                  width: 32,
-                  height: 2,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(1),
-                    child: LinearProgressIndicator(
-                      value: progress! / trophy.requirement,
-                      backgroundColor: Colors.white10,
-                      valueColor: AlwaysStoppedAnimation<Color>(tierColor.withOpacity(0.6)),
+            if (trophy.category == 'speed' || 
+                ['speed_demon', 'lightning_fast'].contains(trophy.key))
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    progress! >= 999 ? 'Not yet started' : '${progress}s',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey.shade400,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-              ],
-            )
+                  const SizedBox(height: 2),
+                  Text(
+                    'Goal: <${trophy.requirement}s',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              )
+            else
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$progress/${trophy.requirement}',
+                    style: TextStyle(
+                        fontSize: 9,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 2),
+                  SizedBox(
+                    width: 32,
+                    height: 2,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(1),
+                      child: LinearProgressIndicator(
+                        value: (progress! / trophy.requirement).clamp(0.0, 1.0),
+                        backgroundColor: Colors.white10,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            tierColor.withOpacity(0.6)),
+                      ),
+                    ),
+                  ),
+                ],
+              )
           ] else if (isUnlocked && unlockedAt != null) ...[
             Text(
               _formatDate(unlockedAt!),

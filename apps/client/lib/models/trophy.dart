@@ -8,7 +8,7 @@ class Trophy {
   final String icon;
   final int requirement;
   final DateTime createdAt;
-  final int? currentProgress;
+  final num? currentProgress;
 
   Trophy({
     required this.id,
@@ -34,7 +34,7 @@ class Trophy {
       icon: json['icon'] as String,
       requirement: json['requirement'] as int,
       createdAt: DateTime.parse(json['createdAt'] as String),
-      currentProgress: json['progress'] as int?,
+      currentProgress: json['progress'] as num?,
     );
   }
 
@@ -58,7 +58,7 @@ class UserTrophy {
   final String userId;
   final String trophyId;
   final DateTime unlockedAt;
-  final int progress;
+  final num progress;
   final Trophy trophy;
 
   UserTrophy({
@@ -76,7 +76,7 @@ class UserTrophy {
       userId: json['userId'] as String,
       trophyId: json['trophyId'] as String,
       unlockedAt: DateTime.parse(json['unlockedAt'] as String),
-      progress: json['progress'] as int? ?? 0,
+      progress: json['progress'] as num? ?? 0,
       trophy: Trophy.fromJson(json['trophy'] as Map<String, dynamic>),
     );
   }

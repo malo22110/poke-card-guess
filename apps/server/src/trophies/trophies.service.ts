@@ -47,7 +47,19 @@ export class TrophiesService {
     trophy: any,
     userRank: number = 0,
   ): number {
-    switch (trophy.category) {
+    const { category, key } = trophy;
+
+    // Handle Speed
+    if (category === 'speed') {
+      if (key === 'speedrunner') return 999.0;
+      return user.fastestGuess || 999.0;
+    }
+    // Handle Speed Demon (special)
+    if (key === 'speed_demon' || key === 'lightning_fast') {
+      return user.fastestGuess || 999.0;
+    }
+
+    switch (category) {
       case 'leaderboard':
         return userRank;
       case 'score':
@@ -63,11 +75,11 @@ export class TrophiesService {
       case 'social':
         return user.sharesCount;
       case 'donation':
-        return Math.floor(user.totalDonated / 100);
+        return Math.floor((user.totalDonated || 0) / 100);
       case 'set':
         try {
-          const uniqueSets = JSON.parse(user.uniqueSetsGuessed || '[]');
-          return Array.isArray(uniqueSets) ? uniqueSets.length : 0;
+          const sets = JSON.parse(user.uniqueSetsGuessed || '[]');
+          return Array.isArray(sets) ? sets.length : 0;
         } catch {
           return 0;
         }
@@ -75,19 +87,16 @@ export class TrophiesService {
         try {
           const stats = JSON.parse(user.rarityStats || '{}');
           let targetRarity = '';
-          if (trophy.key === 'rare_hunter') targetRarity = 'Rare';
-          else if (trophy.key === 'ultra_rare_collector')
-            targetRarity = 'Ultra Rare';
-          else if (trophy.key === 'secret_seeker') targetRarity = 'Secret Rare';
-          return stats[targetRarity] || 0;
+          if (key === 'rare_hunter') targetRarity = 'Rare';
+          else if (key === 'ultra_rare_collector') targetRarity = 'Ultra Rare';
+          else if (key === 'secret_seeker') targetRarity = 'Secret Rare';
+          if (targetRarity) return stats[targetRarity] || 0;
+          return stats[key] || 0;
         } catch {
           return 0;
         }
-      case 'speed':
-        // For speed, lower is better. Returning current fastest guess.
-        return user.fastestGuess || 0;
       case 'special':
-        return this.calculateSpecialProgress(user, trophy.key);
+        return this.calculateSpecialProgress(user, key);
       default:
         return 0;
     }
@@ -213,8 +222,7 @@ export class TrophiesService {
 
       case 'speed_demon':
       case 'lightning_fast':
-        // Would need per-round timing data
-        return false;
+        return (user.fastestGuess || 999.0) <= requirement;
 
       case 'perfectionist':
         return sessions.some((s) => s.score === s.maxScore && s.maxScore > 0);
@@ -333,8 +341,51 @@ export class TrophiesService {
     key: string,
     requirement: number,
   ): Promise<boolean> {
-    // Check based on fastest guess time
+    if (key === 'speedrunner') {
+      const bestTime = await this.getBestGameTime(user.id);
+      return bestTime <= requirement;
+    }
+
+    // Default check based on fastest guess time
     // Requirement is in seconds, lower is better
     return (user.fastestGuess || 999.0) <= requirement;
+  }
+
+  private async getBestGameTime(userId: string): Promise<number> {
+    const sessions = await this.prisma.gameSession.findMany({
+      where: { userId },
+      select: { rounds: true, roundStats: true },
+    });
+
+    let bestTime = 99999;
+
+    for (const session of sessions) {
+      if (session.rounds < 10) continue;
+      try {
+        const stats = JSON.parse(session.roundStats as string);
+        if (Array.isArray(stats)) {
+          const totalTimeMs = stats.reduce((sum: number, item: any) => {
+            // item.stats is Array of { userId, timeTaken, ... }
+            // We need to filter for the current user (although GameSession is per user, the history might contain all lobby players?
+            // Actually saveGameSession saves the FULL lobby history to the user's session entry?
+            // Yes, code: roundStats: JSON.stringify(Array.from(lobby.history...))
+            // So we must find our userId.
+            if (Array.isArray(item.stats)) {
+              const userStat = item.stats.find((s: any) => s.userId === userId);
+              return sum + (userStat?.timeTaken || 0);
+            }
+            return sum;
+          }, 0);
+
+          const totalSeconds = totalTimeMs / 1000;
+          if (totalSeconds > 0 && totalSeconds < bestTime) {
+            bestTime = totalSeconds;
+          }
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    return bestTime;
   }
 }

@@ -178,7 +178,7 @@ class _TrophiesScreenState extends State<TrophiesScreen> {
                           ),
                         ),
                         Text(
-                          '${(_unlockedTrophies.length / (_unlockedTrophies.length + _lockedTrophies.length) * 100).toStringAsFixed(0)}%',
+                          '${((_unlockedTrophies.length + _lockedTrophies.length) == 0 ? 0 : (_unlockedTrophies.length / (_unlockedTrophies.length + _lockedTrophies.length) * 100)).toStringAsFixed(0)}%',
                           style: const TextStyle(
                             color: Colors.amber,
                             fontSize: 14,
@@ -191,8 +191,10 @@ class _TrophiesScreenState extends State<TrophiesScreen> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: LinearProgressIndicator(
-                        value: _unlockedTrophies.length /
-                            (_unlockedTrophies.length + _lockedTrophies.length),
+                        value: (_unlockedTrophies.length + _lockedTrophies.length) == 0
+                            ? 0.0
+                            : _unlockedTrophies.length /
+                                (_unlockedTrophies.length + _lockedTrophies.length),
                         backgroundColor: Colors.indigo.shade700,
                         valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
                         minHeight: 12,

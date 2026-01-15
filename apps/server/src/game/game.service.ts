@@ -535,7 +535,7 @@ export class GameService {
         `[Round Info] Current round: ${lobby.currentRound}/${lobby.config.rounds}`,
       );
 
-      await this.saveRoundResult(userId, currentCard, true);
+      await this.saveRoundResult(userId, currentCard, true, elapsedTime);
 
       // Check for realtime trophies (e.g. streaks, first win)
       let unlockedTrophies: any[] = [];
@@ -960,7 +960,12 @@ export class GameService {
     }
   }
 
-  async saveRoundResult(userId: string, card: GameCard, correct: boolean) {
+  async saveRoundResult(
+    userId: string,
+    card: GameCard,
+    correct: boolean,
+    timeTakenMs: number = 0,
+  ) {
     if (userId.startsWith('guest')) return;
 
     await this.prisma.game.create({
@@ -975,34 +980,36 @@ export class GameService {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
-        select: { currentStreak: true, bestStreak: true },
+        select: { currentStreak: true, bestStreak: true, fastestGuess: true },
       });
 
       if (user) {
         let currentStreak = user.currentStreak;
         let bestStreak = user.bestStreak;
+        const updates: any = {};
 
         if (correct) {
           currentStreak += 1;
           if (currentStreak > bestStreak) {
             bestStreak = currentStreak;
           }
+          const timeSeconds = timeTakenMs / 1000;
+          if (timeSeconds > 0 && timeSeconds < (user.fastestGuess || 999.0)) {
+            updates.fastestGuess = timeSeconds;
+          }
         } else {
           currentStreak = 0;
         }
 
+        updates.totalAttempts = { increment: 1 };
+        updates.totalScore = { increment: correct ? 1 : 0 };
+        updates.currentStreak = currentStreak;
+        updates.bestStreak = bestStreak;
+        updates.cardsGuessed = { increment: correct ? 1 : 0 };
+
         await this.prisma.user.update({
           where: { id: userId },
-          data: {
-            totalAttempts: { increment: 1 },
-            // Maintain rudimentary totalScore increment here if desired,
-            // though session score is main source.
-            // We kept +1 in original code, so keeping it.
-            totalScore: { increment: correct ? 1 : 0 },
-            currentStreak,
-            bestStreak,
-            cardsGuessed: { increment: correct ? 1 : 0 },
-          },
+          data: updates,
         });
       }
     } catch (error) {
