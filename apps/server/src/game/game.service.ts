@@ -334,12 +334,12 @@ export class GameService {
         await this.prisma.user.update({
           where: { id: userId },
           data: {
-            totalScore: { increment: score },
-            totalAttempts: { increment: lobby.config.rounds },
+            totalScore: { increment: 0 }, // Handled in round
+            totalAttempts: { increment: 0 }, // Handled in round
             gamesPlayed: { increment: 1 },
             gamesWon: { increment: isWinner ? 1 : 0 },
-            cardsGuessed: { increment: cardsGuessed },
-            currentStreak: isWinner ? { increment: 1 } : 0, // Reset to 0 if lost
+            cardsGuessed: { increment: 0 }, // Handled in round
+            // currentStreak: , // Handled in round - do NOT reset or increment here
           },
         });
 
@@ -535,7 +535,13 @@ export class GameService {
         `[Round Info] Current round: ${lobby.currentRound}/${lobby.config.rounds}`,
       );
 
-      await this.saveRoundResult(userId, currentCard, true, elapsedTime);
+      await this.saveRoundResult(
+        userId,
+        currentCard,
+        true,
+        elapsedTime,
+        roundScore,
+      );
 
       // Check for realtime trophies (e.g. streaks, first win)
       let unlockedTrophies: any[] = [];
@@ -640,7 +646,7 @@ export class GameService {
 
     const currentCard = lobby.cards[lobby.currentRound - 1];
     lobby.roundResults.set(userId, true);
-    await this.saveRoundResult(userId, currentCard, false);
+    await this.saveRoundResult(userId, currentCard, false, 0, 0);
 
     // Award 'Good Sport' trophy for giving up
     try {
@@ -1007,6 +1013,7 @@ export class GameService {
     card: GameCard,
     correct: boolean,
     timeTakenMs: number = 0,
+    points: number = 0,
   ) {
     if (userId.startsWith('guest')) return;
 
@@ -1044,7 +1051,7 @@ export class GameService {
         }
 
         updates.totalAttempts = { increment: 1 };
-        updates.totalScore = { increment: correct ? 1 : 0 };
+        updates.totalScore = { increment: points };
         updates.currentStreak = currentStreak;
         updates.bestStreak = bestStreak;
         updates.cardsGuessed = { increment: correct ? 1 : 0 };

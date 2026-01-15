@@ -37,6 +37,7 @@ class _TrophiesScreenState extends State<TrophiesScreen> {
     'set',
     'speed',
     'donation',
+    'event',
   ];
 
   @override
