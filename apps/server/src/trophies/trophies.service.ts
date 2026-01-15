@@ -27,12 +27,14 @@ export class TrophiesService {
 
     const userRank = user ? await this.getUserRank(user.totalScore) : 0;
 
-    const locked = allTrophies
-      .filter((t) => !unlockedIds.has(t.id))
-      .map((t) => ({
-        ...t,
-        progress: user ? this.calculateProgress(user, t, userRank) : 0,
-      }));
+    const locked = await Promise.all(
+      allTrophies
+        .filter((t) => !unlockedIds.has(t.id))
+        .map(async (t) => ({
+          ...t,
+          progress: user ? await this.calculateProgress(user, t, userRank) : 0,
+        })),
+    );
 
     return {
       unlocked,
@@ -42,11 +44,11 @@ export class TrophiesService {
     };
   }
 
-  private calculateProgress(
+  private async calculateProgress(
     user: any,
     trophy: any,
     userRank: number = 0,
-  ): number {
+  ): Promise<number> {
     const { category, key } = trophy;
 
     // Handle Speed
@@ -61,6 +63,9 @@ export class TrophiesService {
 
     switch (category) {
       case 'leaderboard':
+        if (key === 'multi_mode_master') {
+          return await this.getMultiModeMasterProgress(user.id);
+        }
         return user.totalScore > 0 ? userRank : 0;
       case 'score':
         return user.totalScore;
@@ -111,6 +116,44 @@ export class TrophiesService {
       default:
         return 0;
     }
+  }
+
+  private async getMultiModeMasterProgress(userId: string): Promise<number> {
+    const userModes = await this.prisma.gameSession.findMany({
+      where: { userId, gameModeId: { not: null } },
+      distinct: ['gameModeId'],
+      select: { gameModeId: true },
+    });
+
+    let eligibleModes = 0;
+    for (const mode of userModes) {
+      if (!mode.gameModeId) continue;
+
+      // Get user's best score in this mode
+      const bestSession = await this.prisma.gameSession.aggregate({
+        where: { userId, gameModeId: mode.gameModeId },
+        _max: { score: true },
+      });
+      const myScore = bestSession._max.score || 0;
+      if (myScore === 0) continue;
+
+      // Count users with better score
+      const betterPlayers = await this.prisma.gameSession.groupBy({
+        by: ['userId'],
+        where: {
+          gameModeId: mode.gameModeId,
+        },
+        having: {
+          score: {
+            _max: { gt: myScore },
+          },
+        },
+      });
+
+      const rank = betterPlayers.length + 1;
+      if (rank <= 10) eligibleModes++;
+    }
+    return eligibleModes;
   }
 
   async checkAndAwardTrophies(
@@ -321,8 +364,8 @@ export class TrophiesService {
     requirement: number,
   ): Promise<boolean> {
     if (key === 'multi_mode_master') {
-      // TODO: Implement mode-specific leaderboard tracking
-      return false;
+      const qualifyingModes = await this.getMultiModeMasterProgress(user.id);
+      return qualifyingModes >= requirement;
     }
     if (user.totalScore === 0) return false;
     const rank = await this.getUserRank(user.totalScore);
