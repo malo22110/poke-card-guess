@@ -44,13 +44,13 @@ class _AuthCallbackScreenState extends State<AuthCallbackScreen> {
         final user = jsonDecode(response.body);
         
         // Save session securely
+        final profileCompleted = user['profileCompleted'] == true;
         await AuthStorageService().saveSession(
           token: widget.token,
           userId: user['id']?.toString(),
           userName: user['name']?.toString(),
+          profileCompleted: profileCompleted,
         );
-
-        final profileCompleted = user['profileCompleted'] == true;
 
         if (!mounted) return;
 

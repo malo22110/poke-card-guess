@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:pokecardguess/config/app_config.dart';
+import 'package:pokecardguess/services/auth_storage_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String? authToken;
@@ -247,8 +248,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
 
                   ElevatedButton.icon(
-                    onPressed: () {
-                       Navigator.of(context).pushReplacementNamed('/login');
+                    onPressed: () async {
+                      await AuthStorageService().clearSession();
+                      if (context.mounted) {
+                        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                      }
                     },
                     icon: const Icon(Icons.logout),
                     label: const Text('Logout'),

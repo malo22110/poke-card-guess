@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pokecardguess/config/app_config.dart';
+import 'package:pokecardguess/services/auth_storage_service.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final String? authToken;
@@ -96,9 +97,18 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         );
 
         if (response.statusCode == 200 || response.statusCode == 201) {
-           Navigator.of(context).pushReplacementNamed('/lobby', arguments: {
-             'authToken': widget.authToken
-           });
+           // Update the stored session to mark profile as completed
+           await AuthStorageService().saveSession(
+             token: widget.authToken!,
+             userName: username,
+             profileCompleted: true,
+           );
+           
+           if (mounted) {
+             Navigator.of(context).pushReplacementNamed('/lobby', arguments: {
+               'authToken': widget.authToken
+             });
+           }
         } else {
           throw Exception('Failed to update profile: ${response.body}');
         }

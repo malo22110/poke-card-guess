@@ -19,6 +19,7 @@ import '../widgets/game/result_display.dart';
 import '../widgets/game/scoreboard.dart';
 import '../widgets/game/story_share_card.dart';
 import '../services/game_socket_service.dart';
+import '../services/auth_storage_service.dart';
 import '../widgets/trophy/trophy_toast.dart';
 import '../../models/trophy.dart';
 
@@ -277,7 +278,12 @@ class _GameScreenState extends State<GameScreen> {
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
     if (args == null || args['lobbyId'] == null) {
-       WidgetsBinding.instance.addPostFrameCallback((_) => Navigator.of(context).pushReplacementNamed('/lobby'));
+       WidgetsBinding.instance.addPostFrameCallback((_) async {
+         final token = await AuthStorageService().getToken();
+         if (context.mounted) {
+           Navigator.of(context).pushReplacementNamed('/lobby', arguments: {'authToken': token});
+         }
+       });
        return;
     }
 
@@ -731,8 +737,15 @@ class _GameScreenState extends State<GameScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pushNamedAndRemoveUntil('/lobby', (route) => false);
+              onPressed: () async {
+                final token = await AuthStorageService().getToken();
+                if (context.mounted) {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/lobby',
+                    (route) => false,
+                    arguments: {'authToken': token},
+                  );
+                }
               },
               child: const Text('Back to Lobby'),
             ),
@@ -917,8 +930,15 @@ class _GameScreenState extends State<GameScreen> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pushNamedAndRemoveUntil('/lobby', (route) => false);
+                onPressed: () async {
+                  final token = await AuthStorageService().getToken();
+                  if (context.mounted) {
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      '/lobby',
+                      (route) => false,
+                      arguments: {'authToken': token},
+                    );
+                  }
                 },
                 icon: const Icon(Icons.arrow_back, color: Colors.indigo),
                 label: const Text('Back to Lobby', style: TextStyle(color: Colors.indigo)),
