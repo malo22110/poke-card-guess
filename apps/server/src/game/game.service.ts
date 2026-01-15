@@ -349,6 +349,44 @@ export class GameService {
           );
         }
 
+        // Track unique sets guessed
+        const setsInThisGame = new Set<string>();
+        for (const card of lobby.cards) {
+          if (card.set) {
+            setsInThisGame.add(card.set);
+          }
+        }
+
+        if (setsInThisGame.size > 0) {
+          // Get user's current unique sets
+          const userWithSets = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { uniqueSetsGuessed: true },
+          });
+
+          const existingSets = userWithSets?.uniqueSetsGuessed
+            ? JSON.parse(userWithSets.uniqueSetsGuessed)
+            : [];
+          const uniqueSets = new Set([
+            ...existingSets,
+            ...Array.from(setsInThisGame),
+          ]);
+
+          await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+              uniqueSetsGuessed: JSON.stringify(Array.from(uniqueSets)),
+            },
+          });
+
+          const newSetsCount = uniqueSets.size - existingSets.length;
+          if (newSetsCount > 0) {
+            console.log(
+              `User ${userId} discovered ${newSetsCount} new set(s)! Total: ${uniqueSets.size}`,
+            );
+          }
+        }
+
         // Check for new trophies
         const newTrophies =
           await this.trophiesService.checkAndAwardTrophies(userId);

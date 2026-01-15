@@ -27,15 +27,16 @@ model User {
   totalAttempts Int @default(0)
   
   // Trophy tracking
-  gamesPlayed          Int @default(0)
-  gamesWon             Int @default(0)
-  currentStreak        Int @default(0)
-  bestStreak           Int @default(0)
-  cardsGuessed         Int @default(0)
-  sharesCount          Int @default(0)
-  totalDonated         Int @default(0) // Total amount donated in cents
-  highScore            Int @default(0) // Personal best score
-  timesBeatenHighScore Int @default(0) // How many times user has beaten their high score
+  gamesPlayed          Int     @default(0)
+  gamesWon             Int     @default(0)
+  currentStreak        Int     @default(0)
+  bestStreak           Int     @default(0)
+  cardsGuessed         Int     @default(0)
+  sharesCount          Int     @default(0)
+  totalDonated         Int     @default(0) // Total amount donated in cents
+  highScore            Int     @default(0) // Personal best score
+  timesBeatenHighScore Int     @default(0) // How many times user has beaten their high score
+  uniqueSetsGuessed    String? // JSON array of unique set IDs
   
   createdGameModes GameMode[]
   upvotes          GameModeUpvote[]

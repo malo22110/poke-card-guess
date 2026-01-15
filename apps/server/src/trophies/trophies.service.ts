@@ -230,9 +230,15 @@ export class TrophiesService {
     key: string,
     requirement: number,
   ): Promise<boolean> {
-    // TODO: Track unique sets from guessed cards
-    // This requires storing set information with guesses
-    return false;
+    // Check based on unique sets guessed
+    if (!user.uniqueSetsGuessed) return false;
+
+    try {
+      const uniqueSets = JSON.parse(user.uniqueSetsGuessed);
+      return Array.isArray(uniqueSets) && uniqueSets.length >= requirement;
+    } catch {
+      return false;
+    }
   }
 
   private async checkSpeedTrophy(
