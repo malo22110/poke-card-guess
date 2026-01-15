@@ -20,6 +20,7 @@ import '../widgets/game/scoreboard.dart';
 import '../widgets/game/story_share_card.dart';
 import '../services/game_socket_service.dart';
 import '../services/auth_storage_service.dart';
+import '../services/sound_service.dart';
 import '../widgets/trophy/trophy_toast.dart';
 import '../../models/trophy.dart';
 
@@ -378,9 +379,11 @@ class _GameScreenState extends State<GameScreen> {
        }
        
        if (data['correct'] == true) {
+         SoundService().playSound(SoundService.correct);
          _showResult(data);
        } else {
           if (mounted) {
+            SoundService().playSound(SoundService.wrong);
             setState(() {
               _guessError = 'Incorrect! Try again.';
             });
@@ -506,6 +509,9 @@ class _GameScreenState extends State<GameScreen> {
       }
       
       if (_remainingSeconds > 0) {
+        if (_remainingSeconds <= 5) {
+          SoundService().playSound(SoundService.tick, volume: 0.5);
+        }
         setState(() {
           _remainingSeconds--;
         });
@@ -546,6 +552,8 @@ class _GameScreenState extends State<GameScreen> {
          error = 'Game Finished!';
          _isLoading = false;
        });
+
+       SoundService().playSound(SoundService.victory);
 
        // Check for unlocked trophies
        if (data['unlockedTrophies'] != null) {
