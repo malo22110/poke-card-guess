@@ -13,12 +13,7 @@ class LoginScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _loginFacebook() async {
-    final url = Uri.parse('${AppConfig.apiBaseUrl}/auth/facebook');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, webOnlyWindowName: '_self');
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -65,14 +60,7 @@ class LoginScreen extends StatelessWidget {
                     color: Colors.white,
                     textColor: Colors.black87,
                   ),
-                  const SizedBox(height: 16),
-                  _buildLoginButton(
-                    onPressed: _loginFacebook,
-                    icon: Icons.facebook,
-                    label: 'Sign in with Facebook',
-                    color: const Color(0xFF1877F2),
-                    textColor: Colors.white,
-                  ),
+
                   
                   const SizedBox(height: 40),
                   TextButton(
