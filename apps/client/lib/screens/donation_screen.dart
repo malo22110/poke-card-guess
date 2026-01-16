@@ -107,9 +107,13 @@ class _DonationScreenState extends State<DonationScreen> {
             ),
           );
 
-          // Check for trophies (backend should return them)
-          // For now, manually check donation trophies
-          _checkDonationTrophies(data['totalDonated'] / 100);
+          // Use trophies returned by the backend if available
+          if (data['newTrophies'] != null && (data['newTrophies'] as List).isNotEmpty) {
+            TrophyService().showTrophies(data['newTrophies']);
+          } else {
+             // Fallback to manual check if no trophies returned (shouldn't happen but safe)
+            _checkDonationTrophies(data['totalDonated'] / 100);
+          }
           
           setState(() => _isLoading = false);
         }
@@ -143,9 +147,12 @@ class _DonationScreenState extends State<DonationScreen> {
       );
 
       if (response.statusCode == 200) {
-        final trophies = jsonDecode(response.body) as List;
-        if (trophies.isNotEmpty) {
-          TrophyService().showTrophies(trophies);
+        final data = jsonDecode(response.body);
+        if (data is Map && data['newTrophies'] != null) {
+          final trophies = data['newTrophies'] as List;
+          if (trophies.isNotEmpty) {
+            TrophyService().showTrophies(trophies);
+          }
         }
       }
     } catch (e) {

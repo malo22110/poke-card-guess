@@ -73,18 +73,25 @@ export class UsersController {
     };
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('donation')
   async recordDonation(
     @Request() req,
     @Body() body: { amount: number }, // Amount in dollars
-  ): Promise<{ success: boolean; totalDonated: number }> {
+  ): Promise<{ success: boolean; totalDonated: number; newTrophies: any[] }> {
     const userId = req.user.userId;
     const amountInCents = Math.round(body.amount * 100);
     const user = await this.usersService.addDonation(userId, amountInCents);
+
+    // Check for donation trophies
+    const newTrophies = await this.trophiesService.checkAndAwardTrophies(
+      userId,
+      { category: 'donation' },
+    );
+
     return {
       success: true,
       totalDonated: user.totalDonated / 100, // Return in dollars
+      newTrophies,
     };
   }
 }
