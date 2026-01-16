@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:html' as html;
+import 'package:url_launcher/url_launcher.dart';
 import '../config/app_config.dart';
 import '../services/auth_storage_service.dart';
 import '../services/trophy_service.dart';
@@ -38,8 +39,11 @@ class _DonationScreenState extends State<DonationScreen> {
 
   void _loadPayPalScript() {
     // Load PayPal SDK script
+    // TODO: Replace YOUR_CLIENT_ID with your actual PayPal Client ID from https://developer.paypal.com/dashboard/
+    // Get it by creating an app in PayPal Developer Dashboard
+    // It should look like: AeXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     final script = html.ScriptElement()
-      ..src = 'https://www.paypal.com/sdk/js?client-id=YOUR_CLIENT_ID&currency=USD'
+      ..src = 'https://www.paypal.com/sdk/js?client-id=AT8HgGd15s6parvziEDAaA9m0sWuBf_CYi6EtpBUj8Xt3CMDyk2TrMh7T3lCJ6E7U6QPFJ1vWyLoc1Nd&currency=USD'
       ..async = true;
     html.document.head?.append(script);
   }
