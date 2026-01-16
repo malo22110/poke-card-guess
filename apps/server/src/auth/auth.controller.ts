@@ -14,8 +14,8 @@ export class AuthController {
   googleAuthRedirect(@Req() req, @Res() res) {
     const token = req.user.access_token;
     // Redirect to the frontend with the token
-    // Adjust the URL to match your Flutter app's URL
-    res.redirect(`http://localhost:8080/#/auth_callback?token=${token}`);
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:8080';
+    res.redirect(`${clientUrl}/#/auth_callback?token=${token}`);
   }
 
   @Get('facebook')
@@ -26,6 +26,7 @@ export class AuthController {
   @UseGuards(AuthGuard('facebook'))
   facebookAuthRedirect(@Req() req, @Res() res) {
     const token = req.user.access_token;
-    res.redirect(`http://localhost:8080/#/auth_callback?token=${token}`);
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:8080';
+    res.redirect(`${clientUrl}/#/auth_callback?token=${token}`);
   }
 }
