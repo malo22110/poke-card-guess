@@ -2,27 +2,24 @@
 FROM debian:latest AS build-env
 
 # Install dependencies
+# Install dependencies
 RUN apt-get update && apt-get install -y \
     curl \
     git \
     unzip \
-    libgconf-2-4 \
-    gdb \
-    libstdc++6 \
+    xz-utils \
+    zip \
     libglu1-mesa \
-    fonts-droid-fallback \
-    lib32stdc++6 \
-    python3 \
     && apt-get clean
 
-# Clone Flutter
-RUN git clone https://github.com/flutter/flutter.git /usr/local/flutter
+# Clone Flutter (Shallow clone for speed)
+RUN git clone --depth 1 -b stable https://github.com/flutter/flutter.git /usr/local/flutter
 
 # Set Flutter path
 ENV PATH="/usr/local/flutter/bin:/usr/local/flutter/bin/cache/dart-sdk/bin:${PATH}"
 
-# Enable web support
-RUN flutter config --enable-web
+# Enable web support (and disable analytics to speed up first run)
+RUN flutter config --no-analytics --enable-web
 
 # Run flutter doctor
 RUN flutter doctor
@@ -35,7 +32,10 @@ COPY . .
 RUN flutter pub get
 
 # Build web
-RUN flutter build web --release
+# Build args
+ARG API_URL=http://localhost:3000
+# Build web with environment variables
+RUN flutter build web --release --dart-define=API_URL=$API_URL --dart-define=SOCKET_URL=$API_URL
 
 # Stage 2: Serve with Nginx
 FROM nginx:1.21.1-alpine
