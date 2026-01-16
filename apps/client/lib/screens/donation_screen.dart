@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:html' as html;
+import 'dart:js' as js;
+import 'dart:ui_web' as ui_web;
 import 'package:url_launcher/url_launcher.dart';
 import '../config/app_config.dart';
 import '../services/auth_storage_service.dart';
@@ -29,6 +31,17 @@ class _DonationScreenState extends State<DonationScreen> {
   void initState() {
     super.initState();
     _loadPayPalScript();
+    
+    // Register the PayPal button container factory for Flutter Web
+    ui_web.platformViewRegistry.registerViewFactory(
+      'paypal-button-container',
+      (int viewId) => html.DivElement()
+        ..id = 'paypal-button-actual-container'
+        ..style.width = '100%'
+        ..style.height = '100%'
+        ..style.minHeight = '200px'
+        ..style.backgroundColor = 'transparent',
+    );
   }
 
   @override
@@ -138,6 +151,37 @@ class _DonationScreenState extends State<DonationScreen> {
     } catch (e) {
       debugPrint('Error checking donation trophies: $e');
     }
+  }
+
+  void _renderPayPalButton(double amount) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.indigo.shade800,
+        title: const Text('Complete Your Donation', style: TextStyle(color: Colors.white)),
+        content: PayPalButtonWidget(
+          amount: amount,
+          onSuccess: () async {
+            await _processDonation(amount);
+            if (mounted) Navigator.of(context).pop();
+          },
+          onCancel: () {
+            if (mounted) Navigator.of(context).pop();
+          },
+          onError: (err) {
+            setState(() => _error = 'Payment failed: $err');
+            if (mounted) Navigator.of(context).pop();
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -368,25 +412,7 @@ class _DonationScreenState extends State<DonationScreen> {
                     }
                     
                     if (amount > 0) {
-                      // TODO: Integrate PayPal SDK here
-                      // For now, show a message
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          backgroundColor: Colors.indigo.shade800,
-                          title: const Text('PayPal Integration', style: TextStyle(color: Colors.white)),
-                          content: Text(
-                            'PayPal SDK integration is in progress.\n\nYou would donate: \$${amount.toStringAsFixed(2)}',
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('OK'),
-                            ),
-                          ],
-                        ),
-                      );
+                      _renderPayPalButton(amount);
                     } else {
                       setState(() => _error = 'Please select or enter an amount');
                     }
@@ -496,6 +522,141 @@ class _DonationScreenState extends State<DonationScreen> {
               style: TextStyle(color: tierColor, fontSize: 11, fontWeight: FontWeight.bold),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class PayPalButtonWidget extends StatefulWidget {
+  final double amount;
+  final VoidCallback onSuccess;
+  final VoidCallback onCancel;
+  final Function(dynamic) onError;
+
+  const PayPalButtonWidget({
+    super.key,
+    required this.amount,
+    required this.onSuccess,
+    required this.onCancel,
+    required this.onError,
+  });
+
+  @override
+  State<PayPalButtonWidget> createState() => _PayPalButtonWidgetState();
+}
+
+class _PayPalButtonWidgetState extends State<PayPalButtonWidget> {
+  bool _rendered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Render the button after the frame is painted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _renderPayPal();
+    });
+  }
+
+  void _renderPayPal() {
+    if (_rendered) return;
+    
+    try {
+      final paypal = js.context['paypal'];
+      if (paypal == null) {
+        widget.onError('PayPal SDK not loaded');
+        return;
+      }
+
+      final buttons = paypal.callMethod('Buttons', [
+        js.JsObject.jsify({
+          'createOrder': js.allowInterop((data, actions) {
+            final actionsObj = actions as js.JsObject;
+            return actionsObj['order'].callMethod('create', [
+              js.JsObject.jsify({
+                'purchase_units': [
+                  {
+                    'amount': {
+                      'value': widget.amount.toStringAsFixed(2),
+                      'currency_code': 'USD'
+                    }
+                  }
+                ]
+              })
+            ]);
+          }),
+          'onApprove': js.allowInterop((data, actions) {
+            final actionsObj = actions as js.JsObject;
+            return actionsObj['order'].callMethod('capture', []).callMethod('then', [
+              js.allowInterop((details) {
+                widget.onSuccess();
+              })
+            ]);
+          }),
+          'onError': js.allowInterop((err) {
+            widget.onError(err);
+          }),
+          'onCancel': js.allowInterop((data) {
+            widget.onCancel();
+          }),
+        })
+      ]);
+
+      // Render into the div that was created by the factory
+      // We use a small delay to make sure the div is actually in the DOM
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          try {
+            buttons.callMethod('render', ['#paypal-button-actual-container']);
+            setState(() => _rendered = true);
+          } catch (e) {
+            debugPrint('PayPal render error: $e');
+            // Try again once more if it fails
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted && !_rendered) {
+                buttons.callMethod('render', ['#paypal-button-actual-container']);
+                setState(() => _rendered = true);
+              }
+            });
+          }
+        }
+      });
+    } catch (e) {
+      widget.onError(e);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 400,
+      constraints: const BoxConstraints(minHeight: 250),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Donating \$${widget.amount.toStringAsFixed(2)}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 20),
+          // Wrap in a container with a visible height and optional debug border
+          Container(
+            height: 300,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const HtmlElementView(viewType: 'paypal-button-container'),
+          ),
+          if (!_rendered) 
+            const Padding(
+              padding: EdgeInsets.only(top: 20),
+              child: Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
         ],
       ),
     );
