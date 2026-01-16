@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class CardDisplay extends StatefulWidget {
   final bool showFullCard;
@@ -159,26 +160,11 @@ class _CardDisplayState extends State<CardDisplay> with SingleTickerProviderStat
         color: Colors.white, // Keep white background to ensure no bleed through
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Image.network(
-        widget.fullImageUrl!,
+      child: CachedNetworkImage(
+        imageUrl: widget.fullImageUrl!,
         fit: BoxFit.cover, // Cover entire container which is now ratio-locked
-        gaplessPlayback: true,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
-            color: Colors.grey[200],
-            child: Center(
-              child: CircularProgressIndicator(
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded /
-                        loadingProgress.expectedTotalBytes!
-                    : null,
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF3B4CCA)),
-              ),
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
+        placeholder: (context, url) => const SizedBox.shrink(),
+        errorWidget: (context, url, error) {
           return Container(
             color: Colors.grey[300],
             child: const Center(

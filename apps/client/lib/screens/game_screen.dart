@@ -11,6 +11,7 @@ import 'dart:typed_data';
 import 'dart:collection';
 import 'package:screenshot/screenshot.dart';
 import 'package:universal_html/html.dart' as html;
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../services/trophy_service.dart';
 import '../widgets/game/game_header.dart';
@@ -523,6 +524,10 @@ class _GameScreenState extends State<GameScreen> {
    void _showResult(Map<String, dynamic> result) {
     _stopRoundTimer(); // Stop the timer when result is shown
     if (!mounted) return;
+
+    if (result['fullImageUrl'] != null) {
+      precacheImage(CachedNetworkImageProvider(result['fullImageUrl']), context);
+    }
     
     setState(() {
        showFullCard = true;

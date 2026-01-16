@@ -46,6 +46,7 @@ dependencies:
   audioplayers: ^6.5.1
   provider: ^6.1.5+1
   js: ^0.6.7
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:
