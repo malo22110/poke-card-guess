@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  # Backend API
+  server:
+    build:
+      context: ./apps/server
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      # Use the service name 'db' as hostname
+      - DATABASE_URL=postgresql://postgres:password@db:5432/pokecardguess?schema=public
+      - JWT_SECRET=dev_secret_change_me_in_prod
+      # Add your OAuth keys here if you want to test auth
+      # - GOOGLE_CLIENT_ID=...
+      # - GOOGLE_CLIENT_SECRET=...
+    env_file:
+      - ./apps/server/.env
+    volumes:
+      - ./apps/server/prisma:/app/prisma
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  # Frontend Web App
+  client:
+    build:
+      context: ./apps/client
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80" # Map host 8080 to container 80
+    restart: unless-stopped
+
+  # Database
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=pokecardguess
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432" # Expose for local debugging tools
+
+volumes:
+  postgres_data:
