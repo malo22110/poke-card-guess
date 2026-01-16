@@ -52,11 +52,11 @@ class _DonationScreenState extends State<DonationScreen> {
 
   void _loadPayPalScript() {
     // Load PayPal SDK script
-    // TODO: Replace YOUR_CLIENT_ID with your actual PayPal Client ID from https://developer.paypal.com/dashboard/
-    // Get it by creating an app in PayPal Developer Dashboard
-    // It should look like: AeXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    final clientId = AppConfig.paypalClientId;
+    final currency = AppConfig.paypalCurrency;
+    
     final script = html.ScriptElement()
-      ..src = 'https://www.paypal.com/sdk/js?client-id=AT8HgGd15s6parvziEDAaA9m0sWuBf_CYi6EtpBUj8Xt3CMDyk2TrMh7T3lCJ6E7U6QPFJ1vWyLoc1Nd&currency=USD'
+      ..src = 'https://www.paypal.com/sdk/js?client-id=$clientId&currency=$currency'
       ..async = true;
     html.document.head?.append(script);
   }

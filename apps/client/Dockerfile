@@ -34,8 +34,15 @@ RUN flutter pub get
 # Build web
 # Build args
 ARG API_URL=http://localhost:3000
+ARG PAYPAL_CLIENT_ID=sb
+ARG PAYPAL_CURRENCY=USD
+
 # Build web with environment variables
-RUN flutter build web --release --dart-define=API_URL=$API_URL --dart-define=SOCKET_URL=$API_URL
+RUN flutter build web --release \
+    --dart-define=API_URL=$API_URL \
+    --dart-define=SOCKET_URL=$API_URL \
+    --dart-define=PAYPAL_CLIENT_ID=$PAYPAL_CLIENT_ID \
+    --dart-define=PAYPAL_CURRENCY=$PAYPAL_CURRENCY
 
 # Stage 2: Serve with Nginx
 FROM nginx:1.21.1-alpine

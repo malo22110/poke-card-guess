@@ -49,6 +49,11 @@ We have added a `Dockerfile` to `apps/client`.
 2.  Deploy to Railway/Render as a Docker service.
     - Root Directory: `apps/client`
     - Port: 80
+    - **Build Arguments** (Set these during deployment configuration):
+      - `API_URL`: URL of your deployed backend (e.g., `https://my-api.onrender.com`).
+      - `SOCKET_URL`: URL of your socket server (usually same as API).
+      - `PAYPAL_CLIENT_ID`: Your PayPal Client ID (prod or sandbox).
+      - `PAYPAL_CURRENCY`: Currency code (default USD).
 
 ## 3. Connecting them
 

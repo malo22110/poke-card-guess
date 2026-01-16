@@ -28,6 +28,11 @@ services:
     build:
       context: ./apps/client
       dockerfile: Dockerfile
+      args:
+        - API_URL=http://localhost:3000
+        - SOCKET_URL=http://localhost:3000
+        - PAYPAL_CLIENT_ID=sb
+        - PAYPAL_CURRENCY=USD
     ports:
       - "8080:80" # Map host 8080 to container 80
     restart: unless-stopped

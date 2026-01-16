@@ -13,4 +13,14 @@ class AppConfig {
     'CLIENT_URL',
     defaultValue: 'http://localhost:8080',
   );
+
+  static const String paypalClientId = String.fromEnvironment(
+    'PAYPAL_CLIENT_ID',
+    defaultValue: 'sb', // sb = sandbox
+  );
+
+  static const String paypalCurrency = String.fromEnvironment(
+    'PAYPAL_CURRENCY',
+    defaultValue: 'USD',
+  );
 }
