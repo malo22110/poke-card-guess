@@ -30,11 +30,17 @@ export class GameModesService {
       where: { id },
     });
 
-    const trophy = await this.trophiesService.unlockTrophy(
+    // Increment deleted modes count and check for trophies
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { deletedModesCount: { increment: 1 } },
+    });
+
+    const newTrophies = await this.trophiesService.checkAndAwardTrophies(
       userId,
-      'cleanup_crew',
+      { category: 'creator' },
     );
-    return { newTrophies: trophy ? [trophy] : [] };
+    return { newTrophies };
   }
 
   async create(data: {

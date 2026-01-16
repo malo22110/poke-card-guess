@@ -94,6 +94,12 @@ export class TrophiesService {
           return 0;
         }
       case 'creator':
+        if (key === 'cleanup_crew') {
+          return (user as any).deletedModesCount || 0;
+        }
+        if (key === 'community_favorite') {
+          return await this.getMaxUpvotes(user.id);
+        }
         return user._count?.createdGameModes || 0;
       case 'rarity':
         try {
@@ -175,6 +181,15 @@ export class TrophiesService {
       if (rank <= 10) eligibleModes++;
     }
     return eligibleModes;
+  }
+
+  private async getMaxUpvotes(userId: string): Promise<number> {
+    const modes = await this.prisma.gameMode.findMany({
+      where: { creatorId: userId },
+      include: { _count: { select: { upvotes: true } } },
+    });
+
+    return modes.reduce((max, m) => Math.max(max, m._count.upvotes || 0), 0);
   }
 
   async checkUpvoteTrophies(userId: string) {
@@ -331,6 +346,11 @@ export class TrophiesService {
           );
           return maxUpvotes >= requirement;
         }
+
+        if (key === 'cleanup_crew') {
+          return (user.deletedModesCount || 0) >= requirement;
+        }
+
         // For other creator trophies, check creation count
         return (user._count?.createdGameModes || 0) >= requirement;
 
