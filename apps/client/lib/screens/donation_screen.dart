@@ -76,52 +76,45 @@ class _DonationScreenState extends State<DonationScreen> {
       final authStorage = AuthStorageService();
       final authToken = await authStorage.getToken();
       
-      if (authToken == null) {
-        setState(() {
-          _error = 'Please log in to donate';
-          _isLoading = false;
-        });
-        return;
+      if (authToken != null) {
+        // Record donation on backend (Authenticated users)
+        final response = await http.post(
+          Uri.parse('${AppConfig.apiBaseUrl}/users/donation'),
+          headers: {
+            'Authorization': 'Bearer $authToken',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'amount': amount}),
+        );
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final data = jsonDecode(response.body);
+          
+          if (mounted) {
+            // Use trophies returned by the backend if available
+            if (data['newTrophies'] != null && (data['newTrophies'] as List).isNotEmpty) {
+              TrophyService().showTrophies(data['newTrophies']);
+            } else {
+               // Fallback to manual check only for authenticated users
+              _checkDonationTrophies(data['totalDonated'] / 100);
+            }
+          }
+        } 
+        // Note: If backend fails, we still consider the PayPal transaction a success from user POV,
+        // but maybe log it? For now, we proceed to show success message.
       }
 
-      // Record donation on backend
-      final response = await http.post(
-        Uri.parse('${AppConfig.apiBaseUrl}/users/donation'),
-        headers: {
-          'Authorization': 'Bearer $authToken',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'amount': amount}),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
+      if (mounted) {
+        // Show success message (Everyone)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Thank you for your \$${amount.toStringAsFixed(2)} donation!'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
+          ),
+        );
         
-        if (mounted) {
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Thank you for your \$${amount.toStringAsFixed(2)} donation!'),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 5),
-            ),
-          );
-
-          // Use trophies returned by the backend if available
-          if (data['newTrophies'] != null && (data['newTrophies'] as List).isNotEmpty) {
-            TrophyService().showTrophies(data['newTrophies']);
-          } else {
-             // Fallback to manual check if no trophies returned (shouldn't happen but safe)
-            _checkDonationTrophies(data['totalDonated'] / 100);
-          }
-          
-          setState(() => _isLoading = false);
-        }
-      } else {
-        setState(() {
-          _error = 'Failed to record donation';
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     } catch (e) {
       setState(() {
