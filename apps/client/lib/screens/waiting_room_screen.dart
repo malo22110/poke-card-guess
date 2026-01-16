@@ -206,11 +206,17 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
           ),
         ),
         child: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const SizedBox(height: kToolbarHeight),
                   Text(
@@ -346,6 +352,9 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                 ],
               ),
             ),
+                ),
+              );
+            },
           ),
         ),
       ),
