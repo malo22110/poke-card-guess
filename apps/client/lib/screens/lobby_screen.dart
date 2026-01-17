@@ -274,13 +274,13 @@ class _LobbyScreenState extends State<LobbyScreen> {
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
                   const SizedBox(height: kToolbarHeight + 16),
                   Image.asset(
                     'assets/images/pokecardguess.png',
-                    height: 300,
+                    height: 180,
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 48),

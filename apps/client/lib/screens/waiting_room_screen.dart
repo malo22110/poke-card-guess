@@ -209,6 +209,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     minHeight: constraints.maxHeight,
@@ -221,7 +222,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                   const SizedBox(height: kToolbarHeight),
                   Text(
                     'Lobby: ${lobbyId.isEmpty ? "Loading..." : lobbyId}',
-                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 2),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 2),
                   ),
                   const SizedBox(height: 48),
                   
@@ -236,7 +237,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                     ),
                     child: Column(
                       children: [
-                        const Icon(Icons.people, size: 48, color: Colors.amber),
+                        const Icon(Icons.people, size: 32, color: Colors.amber),
                         const SizedBox(height: 16),
                         Text(
                           '$_playerCount Player(s) Joined',
