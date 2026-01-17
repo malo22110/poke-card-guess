@@ -442,10 +442,12 @@ class _GameScreenState extends State<GameScreen> {
      _socketService.connect();
 
     _roundSub = _socketService.roundUpdateStream.listen((data) {
+       debugPrint('[GameScreen] SOCKET EVENT: roundUpdate: $data');
        _handleRoundUpdate(data);
     });
     
     _guessResultSub = _socketService.guessResultStream.listen((data) {
+       debugPrint('[GameScreen] SOCKET EVENT: guessResult: $data');
        if (!mounted) return;
        
        // Real-time trophy unlocking check
@@ -475,12 +477,14 @@ class _GameScreenState extends State<GameScreen> {
     });
 
     _giveUpResultSub = _socketService.giveUpResultStream.listen((data) {
+       debugPrint('[GameScreen] SOCKET EVENT: giveUpResult: $data');
        if (mounted) {
           _showResult(data);
        }
     });
 
     _roundFinishedSub = _socketService.roundFinishedStream.listen((data) {
+       debugPrint('[GameScreen] SOCKET EVENT: roundFinished: $data');
        if (mounted) {
          // This overrides whatever we have, ensuring everyone sees the result
          // data.result contains everything
@@ -525,6 +529,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
    void _showResult(Map<String, dynamic> result) {
+    debugPrint('[GameScreen] _showResult called with: $result');
     _stopRoundTimer(); // Stop the timer when result is shown
     if (!mounted) return;
 
@@ -612,6 +617,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _handleRoundUpdate(dynamic data) {
+    debugPrint('[GameScreen] _handleRoundUpdate called with: $data');
     if (!mounted) return;
 
     if (data['playerNames'] != null) {
