@@ -699,6 +699,9 @@ export class GameService {
     };
 
     if (allFinished) {
+      console.log(
+        `[DEBUG_FLICKER] Round ${lobby.currentRound} Finished. Clearing Buffer.`,
+      );
       lobby.currentRound++;
       lobby.currentCardBuffer = undefined;
       // roundStartTime will be set in scheduleNextRound when data is sent
@@ -1194,7 +1197,19 @@ export class GameService {
     // Download and crop the image with the current reveal percentage
     try {
       if (!lobby.currentCardBuffer) {
+        console.log(
+          `[DEBUG_FLICKER] Buffer Empty for Round ${lobby.currentRound}. Downloading: ${card.name}`,
+        );
         lobby.currentCardBuffer = await this.downloadImage(card.fullImageUrl);
+        if (lobby.currentCardBuffer) {
+          console.log(
+            `[DEBUG_FLICKER] Buffer Set. Size: ${lobby.currentCardBuffer.length}`,
+          );
+        }
+      } else {
+        console.log(
+          `[DEBUG_FLICKER] Using Existing Buffer for Round ${lobby.currentRound}. Size: ${lobby.currentCardBuffer.length}`,
+        );
       }
       const croppedImage = await this.cropImage(
         lobby.currentCardBuffer,

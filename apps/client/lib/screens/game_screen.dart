@@ -645,7 +645,8 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _handleRoundUpdate(dynamic data) {
-    debugPrint('[GameScreen] _handleRoundUpdate called with: $data');
+    if (!_isInitialized) return;
+    debugPrint('[GameScreen] _handleRoundUpdate called with: $data. Instance: $_instanceId');
     if (!mounted) return;
 
     // Check for stale round data (e.g. from delayed HTTP requests vs Socket events)
