@@ -128,7 +128,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
         },
         body: jsonEncode({
           'lobbyId': lobbyId,
-          'guestName': _guestName,
+          'guestName': _guestName ?? _userName,
           'guestAvatar': _guestAvatar,
         }),
       );
