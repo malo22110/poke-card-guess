@@ -122,7 +122,7 @@ export class GameService {
     };
 
     // Pre-load cards during creation
-    newLobby.cards = await this.fetchGameCards(newLobby.config);
+    newLobby.cards = await this.fetchGameCards(newLobby.config, gameModeId);
 
     this.lobbies.set(lobbyId, newLobby);
     // Hide cards from client to prevent cheating
@@ -206,7 +206,7 @@ export class GameService {
 
     if (lobby.cards.length === 0) {
       // Retry fetching if empty (should have been fetched at creation)
-      lobby.cards = await this.fetchGameCards(lobby.config);
+      lobby.cards = await this.fetchGameCards(lobby.config, lobby.gameModeId);
       if (lobby.cards.length === 0) {
         throw new HttpException(
           'No cards available for this configuration',
@@ -763,24 +763,63 @@ export class GameService {
 
   // --- Helpers ---
 
-  private async fetchGameCards(config: GameConfig): Promise<GameCard[]> {
+  private async fetchGameCards(
+    config: GameConfig,
+    gameModeId?: string,
+  ): Promise<GameCard[]> {
     const cards: GameCard[] = [];
     let attempts = 0;
     const maxAttempts = config.rounds * 5;
 
-    // If secretOnly is enabled, fetch all secret rare cards first
     let availableCards: CardSummary[] = [];
-    if (config.secretOnly) {
-      try {
-        availableCards = await this.fetchSecretRareCards(
-          config.sets,
-          config.rarities,
-        );
-        console.log(`Found ${availableCards.length} secret rare cards`);
-      } catch (e) {
-        console.error('Failed to fetch secret rare cards', e);
-        return cards;
+    let fetchedFromCache = false;
+
+    // 1. Try Loading from Game Mode Cache
+    if (gameModeId) {
+      const gameMode = await this.prisma.gameMode.findUnique({
+        where: { id: gameModeId },
+      });
+      if (gameMode && gameMode.cachedCardsJson) {
+        try {
+          availableCards = JSON.parse(gameMode.cachedCardsJson);
+          fetchedFromCache = true;
+          console.log(
+            `[Cache] Loaded ${availableCards.length} cards from GameMode ${gameMode.name}`,
+          );
+        } catch (e) {
+          console.warn('Failed to parse cached cards', e);
+        }
       }
+    }
+
+    // 2. If not in cache, Fetch from Source
+    // Use the secret/rarity fetcher if secretOnly OR if specific rarities are defined (e.g. Pioneers)
+    if (!fetchedFromCache) {
+      if (
+        config.secretOnly ||
+        (config.rarities && config.rarities.length > 0)
+      ) {
+        try {
+          availableCards = await this.fetchSecretRareCards(
+            config.sets,
+            config.rarities,
+          );
+          console.log(`Found ${availableCards.length} matching cards`);
+        } catch (e) {
+          console.error('Failed to fetch cards', e);
+        }
+      }
+    }
+
+    // 3. Save to Cache
+    if (gameModeId && !fetchedFromCache && availableCards.length > 0) {
+      await this.prisma.gameMode.update({
+        where: { id: gameModeId },
+        data: { cachedCardsJson: JSON.stringify(availableCards) },
+      });
+      console.log(
+        `[Cache] Saved ${availableCards.length} cards to GameMode ${gameModeId}`,
+      );
     }
 
     while (cards.length < config.rounds && attempts < maxAttempts) {
@@ -788,7 +827,7 @@ export class GameService {
       try {
         let cardData;
 
-        if (config.secretOnly && availableCards.length > 0) {
+        if (availableCards.length > 0) {
           // Pick a random card from the pre-fetched secret rare cards
           const randomIndex = Math.floor(Math.random() * availableCards.length);
           const cardSummary = availableCards[randomIndex];

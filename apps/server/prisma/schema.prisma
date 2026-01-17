@@ -73,6 +73,9 @@ model GameMode {
   configJson  String
   
   isOfficial  Boolean  @default(false)
+  
+  cachedCardsJson String?  // Check db size limit if large
+  
   createdAt   DateTime @default(now())
   
   upvotes     GameModeUpvote[]
