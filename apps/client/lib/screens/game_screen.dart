@@ -530,6 +530,22 @@ class _GameScreenState extends State<GameScreen> {
 
    void _showResult(Map<String, dynamic> result) {
     debugPrint('[GameScreen] _showResult called with: $result');
+    
+    // Ignore stale results from previous rounds to prevent state flickering
+    if (result.containsKey('currentRound') && result['currentRound'] != null) {
+      final dynamic rawRound = result['currentRound'];
+      final int resultRound = rawRound is int ? rawRound : int.tryParse(rawRound.toString()) ?? 0;
+      
+      debugPrint('[GameScreenDebug] Checking Stale: ResultRound=$resultRound vs CurrentRound=$_currentRound');
+      
+      if (resultRound < _currentRound) {
+        debugPrint('[GameScreen] Ignoring stale result for round $resultRound (current: $_currentRound)');
+        return;
+      }
+    } else {
+        debugPrint('[GameScreenDebug] Result missing currentRound key. Keys: ${result.keys.toList()}');
+    }
+
     _stopRoundTimer(); // Stop the timer when result is shown
     if (!mounted) return;
 

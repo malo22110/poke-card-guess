@@ -693,6 +693,8 @@ export class GameService {
       fullImageUrl: currentCard.fullImageUrl,
       set: currentCard.set,
       roundFinished: allFinished,
+      scores: Object.fromEntries(lobby.scores),
+      currentRound: lobby.currentRound,
       playerStatuses: this.getRoundPlayerStatuses(lobby),
     };
 
@@ -742,6 +744,7 @@ export class GameService {
       fullImageUrl: currentCard.fullImageUrl,
       set: currentCard.set,
       roundFinished: true,
+      currentRound: lobby.currentRound - 1, // Return the round that just finished
     };
   }
 
