@@ -35,6 +35,7 @@ class GameScreen extends StatefulWidget {
 
 
 class _GameScreenState extends State<GameScreen> {
+  final String _instanceId = DateTime.now().millisecondsSinceEpoch.toString();
   // ... (Variables mostly same, remove Auth logic if only using ws, but might need auth token for WS init if not singleton)
   String? _lobbyId;
   String? _gameId;
@@ -372,6 +373,7 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     if (args != null && !_isInitialized) {
+      debugPrint('[GameScreen] Initializing Instance: $_instanceId');
       _isInitialized = true;
       _lobbyId = args['lobbyId'];
       _guestId = args['guestId'];
@@ -500,6 +502,18 @@ class _GameScreenState extends State<GameScreen> {
            if (data['round'] != null) {
              final int serverRound = data['round'];
              if (serverRound < _currentRound) return;
+           } else {
+             debugPrint('[GameScreen] Ignoring progressive reveal packet without round number (Stale Server). Instance: $_instanceId');
+             return;
+           }
+
+           if (data['croppedImage'] != null) {
+           if (data['round'] != null) {
+             final int serverRound = data['round'];
+             if (serverRound < _currentRound) return;
+           } else {
+             debugPrint('[GameScreen] Ignoring progressive reveal packet without round number (Stale Server). Instance: $_instanceId');
+             return;
            }
 
            if (data['croppedImage'] != null) {
