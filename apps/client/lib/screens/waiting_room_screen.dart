@@ -47,20 +47,22 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     
-    if (args != null && args['lobbyId'] != null && !_isInitialized) {
-      _isInitialized = true;
-      lobbyId = args['lobbyId'];
-      isHost = args['isHost'] == true || args['isHost'] == 'true';
-      authToken = args['authToken'];
-      guestId = args['guestId']; 
-      _guestName = args['guestName']; // Read guestName
+    if (args != null && args['lobbyId'] != null) {
+      if (!_isInitialized) {
+        _isInitialized = true;
+        lobbyId = args['lobbyId'];
+        isHost = args['isHost'] == true || args['isHost'] == 'true';
+        authToken = args['authToken'];
+        guestId = args['guestId']; 
+        _guestName = args['guestName']; // Read guestName
 
-      if (authToken != null && _userName == null) {
-        _fetchUserProfile();
+        if (authToken != null && _userName == null) {
+          _fetchUserProfile();
+        }
+
+        _initSocket();
+        _fetchLobbyDetails();
       }
-
-      _initSocket();
-      _fetchLobbyDetails();
     } else {
       lobbyId = '';
       isHost = false;
