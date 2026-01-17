@@ -508,15 +508,6 @@ class _GameScreenState extends State<GameScreen> {
            }
 
            if (data['croppedImage'] != null) {
-           if (data['round'] != null) {
-             final int serverRound = data['round'];
-             if (serverRound < _currentRound) return;
-           } else {
-             debugPrint('[GameScreen] Ignoring progressive reveal packet without round number (Stale Server). Instance: $_instanceId');
-             return;
-           }
-
-           if (data['croppedImage'] != null) {
              _croppedImage = data['croppedImage'];
            }
          });
