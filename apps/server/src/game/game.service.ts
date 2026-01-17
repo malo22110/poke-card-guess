@@ -1166,9 +1166,11 @@ export class GameService {
     return croppedBuffer.toString('base64');
   }
 
-  async getProgressiveReveal(
-    lobbyId: string,
-  ): Promise<{ croppedImage: string; revealPercentage: number } | null> {
+  async getProgressiveReveal(lobbyId: string): Promise<{
+    croppedImage: string;
+    revealPercentage: number;
+    round: number;
+  } | null> {
     const lobby = this.lobbies.get(lobbyId);
     if (!lobby || lobby.status !== 'PLAYING' || lobby.currentRound === 0) {
       return null;
@@ -1202,6 +1204,7 @@ export class GameService {
       return {
         croppedImage: `data:image/png;base64,${croppedImage}`,
         revealPercentage: Math.round(revealPercentage * 100) / 100,
+        round: lobby.currentRound,
       };
     } catch (error) {
       console.error('Error generating progressive reveal:', error);

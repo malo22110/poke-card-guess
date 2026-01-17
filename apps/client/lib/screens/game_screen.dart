@@ -497,6 +497,11 @@ class _GameScreenState extends State<GameScreen> {
     _progressiveRevealSub = _socketService.progressiveRevealStream.listen((data) {
        if (mounted) {
          setState(() {
+           if (data['round'] != null) {
+             final int serverRound = data['round'];
+             if (serverRound < _currentRound) return;
+           }
+
            if (data['croppedImage'] != null) {
              _croppedImage = data['croppedImage'];
            }
