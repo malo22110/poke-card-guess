@@ -638,6 +638,15 @@ class _GameScreenState extends State<GameScreen> {
     debugPrint('[GameScreen] _handleRoundUpdate called with: $data');
     if (!mounted) return;
 
+    // Check for stale round data (e.g. from delayed HTTP requests vs Socket events)
+    if (data['round'] != null) {
+       final int serverRound = data['round'];
+       if (serverRound < _currentRound) {
+         debugPrint('[GameScreen] Ignoring stale round update: $serverRound (current: $_currentRound)');
+         return;
+       }
+    }
+
     if (data['playerNames'] != null) {
       _playerNames = Map<String, String>.from(data['playerNames']);
     }
