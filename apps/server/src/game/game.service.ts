@@ -1164,6 +1164,8 @@ export class GameService {
 
     const croppedBuffer = await image
       .extract({ left: 0, top: top, width: metadata.width, height: cropHeight })
+      .resize({ width: 400, withoutEnlargement: true }) // Optimize size
+      .webp({ quality: 60 }) // Optimize format (WebP is smaller than PNG)
       .toBuffer();
 
     return croppedBuffer.toString('base64');
