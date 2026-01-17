@@ -227,6 +227,7 @@ export class GameService {
       totalRounds: lobby.config.rounds,
       croppedImage: `data:image/png;base64,${card.croppedImage}`,
       playerStatuses: this.getRoundPlayerStatuses(lobby),
+      playerNames: Object.fromEntries(lobby.playerNames),
     };
   }
 
@@ -256,6 +257,7 @@ export class GameService {
     const card = lobby.cards[lobby.currentRound - 1];
     return {
       gameId: lobby.id,
+      playerNames: Object.fromEntries(lobby.playerNames),
       round: lobby.currentRound,
       totalRounds: lobby.config.rounds,
       croppedImage: `data:image/png;base64,${card.croppedImage}`,
@@ -625,6 +627,7 @@ export class GameService {
         currentRound: lobby.currentRound,
         totalRounds: lobby.config.rounds,
         playerStatuses: this.getRoundPlayerStatuses(lobby),
+        playerNames: Object.fromEntries(lobby.playerNames),
         unlockedTrophies,
       };
 

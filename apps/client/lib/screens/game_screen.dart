@@ -613,6 +613,10 @@ class _GameScreenState extends State<GameScreen> {
 
   void _handleRoundUpdate(dynamic data) {
     if (!mounted) return;
+
+    if (data['playerNames'] != null) {
+      _playerNames = Map<String, String>.from(data['playerNames']);
+    }
     
     if (data['status'] == 'FINISHED') {
        setState(() {
@@ -621,9 +625,7 @@ class _GameScreenState extends State<GameScreen> {
            _scores = Map<String, int>.from(data['scores']);
          }
 
-         if (data['playerNames'] != null) {
-           _playerNames = Map<String, String>.from(data['playerNames']);
-         }
+
          
          // Extract full card history from server to ensure all cards are shown
          if (data['history'] != null) {
@@ -968,7 +970,7 @@ class _GameScreenState extends State<GameScreen> {
                                                     child: Column(
                                                       crossAxisAlignment: CrossAxisAlignment.start,
                                                       children: [
-                                                        Text(r['userId'] == _guestId ? 'You' : r['userId'], style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                                                        Text(r['userId'] == _guestId ? 'You' : (_playerNames[r['userId']] ?? r['userId']), style: const TextStyle(color: Colors.white70, fontSize: 13)),
                                                         if (r['guess'] != null)
                                                           Text(
                                                             '${r['guess']}',
