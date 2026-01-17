@@ -35,6 +35,7 @@ export interface GameLobby {
   roundStartTime: number;
   history: Map<number, RoundResult[]>; // round number -> results
   timer?: any; // NodeJS.Timeout
+  currentCardBuffer?: Buffer;
 }
 
 // ... existing interfaces ...
@@ -216,6 +217,7 @@ export class GameService {
 
     lobby.status = 'PLAYING';
     lobby.currentRound = 1;
+    lobby.currentCardBuffer = undefined;
     lobby.roundStartTime = Date.now();
 
     const card = lobby.cards[0];
@@ -635,6 +637,7 @@ export class GameService {
           Object.fromEntries(lobby.scores),
         );
         lobby.currentRound++;
+        lobby.currentCardBuffer = undefined;
         // roundStartTime will be set in scheduleNextRound when data is sent
         lobby.roundResults.clear();
         console.log(`[Round Advance] Advanced to round ${lobby.currentRound}`);
@@ -692,6 +695,7 @@ export class GameService {
 
     if (allFinished) {
       lobby.currentRound++;
+      lobby.currentCardBuffer = undefined;
       // roundStartTime will be set in scheduleNextRound when data is sent
       lobby.roundResults.clear();
     }
@@ -726,6 +730,7 @@ export class GameService {
 
     // Advance round
     lobby.currentRound++;
+    lobby.currentCardBuffer = undefined;
     lobby.roundStartTime = Date.now();
     lobby.roundResults.clear();
 
@@ -1127,8 +1132,13 @@ export class GameService {
 
     // Download and crop the image with the current reveal percentage
     try {
-      const imageBuffer = await this.downloadImage(card.fullImageUrl);
-      const croppedImage = await this.cropImage(imageBuffer, revealPercentage);
+      if (!lobby.currentCardBuffer) {
+        lobby.currentCardBuffer = await this.downloadImage(card.fullImageUrl);
+      }
+      const croppedImage = await this.cropImage(
+        lobby.currentCardBuffer,
+        revealPercentage,
+      );
 
       return {
         croppedImage: `data:image/png;base64,${croppedImage}`,
