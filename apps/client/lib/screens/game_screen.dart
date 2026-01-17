@@ -278,6 +278,7 @@ class _GameScreenState extends State<GameScreen> {
   
   // Card history for final screen
   List<Map<String, dynamic>> _cardHistory = [];
+  bool _isInitialized = false;
   
   // Actually the Gateway emits 'guessResult' only to the guesser. 
   // It emits 'roundFinished' to EVERYONE if correct.
@@ -370,7 +371,8 @@ class _GameScreenState extends State<GameScreen> {
        return;
     }
 
-    if (args != null) {
+    if (args != null && !_isInitialized) {
+      _isInitialized = true;
       _lobbyId = args['lobbyId'];
       _guestId = args['guestId'];
       
