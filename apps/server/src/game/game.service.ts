@@ -254,6 +254,10 @@ export class GameService {
         })),
       };
     }
+    console.log(
+      `[DEBUG_FLICKER] Clearing Buffer in getCurrentRoundData for Round ${lobby.currentRound}`,
+    );
+    lobby.currentCardBuffer = undefined;
     const card = lobby.cards[lobby.currentRound - 1];
     return {
       gameId: lobby.id,
@@ -638,6 +642,9 @@ export class GameService {
         console.log(
           `[Scores] Current scores:`,
           Object.fromEntries(lobby.scores),
+        );
+        console.log(
+          `[DEBUG_FLICKER] Clearing Buffer for Round ${lobby.currentRound} (Advance).`,
         );
         lobby.currentRound++;
         lobby.currentCardBuffer = undefined;
