@@ -113,7 +113,7 @@ class _GameScreenState extends State<GameScreen> {
       
       await Share.shareXFiles(
         [xFile],
-        text: 'I just scored $score points in PokeCardGuess! Can you beat me? 🃏✨ #Pokemon #PokeCardGuess ${AppConfig.clientUrl}',
+        text: 'I just scored $score points in PokeCardGuess! Can you beat me? 🃏✨ #Pokemon #PokeCardGuess https://www.pokecardguess.com',
       );
       
       // Track share on backend (only once)
@@ -259,7 +259,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _shareOnX() async {
-      final text = Uri.encodeComponent('I just scored $score points in PokeCardGuess! Can you beat me? 🃏✨\n\nPlay now: ${AppConfig.clientUrl}\n\n#Pokemon #PokeCardGuess');
+      final text = Uri.encodeComponent('I just scored $score points in PokeCardGuess! Can you beat me? 🃏✨\n\nPlay now: https://pokecardguess.com\n\n#Pokemon #PokeCardGuess');
       final url = Uri.parse('https://x.com/intent/post?text=$text');
       launchUrl(url, mode: LaunchMode.externalApplication);
       

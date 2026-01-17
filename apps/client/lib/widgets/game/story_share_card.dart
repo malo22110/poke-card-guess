@@ -194,7 +194,7 @@ class StoryShareCard extends StatelessWidget {
                     border: Border.all(color: Colors.amber.withOpacity(0.5)),
                   ),
                   child: Text(
-                    AppConfig.clientUrl.replaceAll('https://', '').replaceAll('http://', ''),
+                    'pokecardguess.com',
                     style: const TextStyle(
                       color: Colors.amber,
                       fontWeight: FontWeight.w900,
