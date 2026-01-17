@@ -749,7 +749,21 @@ export class GameService {
     const lobby = this.lobbies.get(lobbyId);
     if (lobby) {
       if (lobby.timer) clearTimeout(lobby.timer);
-      lobby.timer = setTimeout(callback, ms);
+
+      const timerRound = lobby.currentRound;
+      lobby.timer = setTimeout(() => {
+        // Ensure the timer is still relevant for the current round
+        const currentLobby = this.lobbies.get(lobbyId);
+        if (currentLobby && currentLobby.currentRound === timerRound) {
+          callback();
+        } else {
+          console.log(
+            `[Timer] Ignored stale timer for round ${timerRound} (curr: ${
+              currentLobby?.currentRound
+            })`,
+          );
+        }
+      }, ms);
     }
   }
 
