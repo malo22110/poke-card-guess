@@ -873,14 +873,14 @@ export class GameService {
         if (cards.some((c) => c.id === cardData.id)) continue;
 
         const imageBuffer = await this.downloadImage(
-          `${cardData.image}/high.png`,
+          `${cardData.image}/high.webp`,
         );
         const croppedImage = await this.cropImage(imageBuffer);
 
         cards.push({
           id: cardData.id,
           name: cardData.name,
-          fullImageUrl: `${cardData.image}/high.png`,
+          fullImageUrl: `${cardData.image}/high.webp`,
           set: cardData.set.name,
           croppedImage,
           rarity: cardData.rarity || 'Unknown',
@@ -1084,7 +1084,7 @@ export class GameService {
           id: c.id,
           localId: c.localId,
           name: c.name,
-          image: `${c.image}/high.png`, // Construct full URL
+          image: `${c.image}/high.webp`, // Construct full URL
         }));
     } catch (e) {
       console.error('getPreviewCards error', e);
