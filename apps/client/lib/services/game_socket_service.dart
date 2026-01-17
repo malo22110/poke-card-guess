@@ -14,6 +14,9 @@ class GameSocketService {
   final _roundUpdateController = StreamController<Map<String, dynamic>>.broadcast();
   final _guessResultController = StreamController<Map<String, dynamic>>.broadcast();
   final _scoreboardUpdateController = StreamController<Map<String, dynamic>>.broadcast();
+  final _roundFinishedController = StreamController<Map<String, dynamic>>.broadcast();
+  final _giveUpResultController = StreamController<Map<String, dynamic>>.broadcast();
+  final _progressiveRevealController = StreamController<Map<String, dynamic>>.broadcast();
 
   Stream<int> get playerCountStream => _playerCountController.stream;
   Stream<List<String>> get playerListStream => _playerListController.stream;
@@ -22,6 +25,9 @@ class GameSocketService {
   Stream<Map<String, dynamic>> get roundUpdateStream => _roundUpdateController.stream;
   Stream<Map<String, dynamic>> get guessResultStream => _guessResultController.stream;
   Stream<Map<String, dynamic>> get scoreboardUpdateStream => _scoreboardUpdateController.stream;
+  Stream<Map<String, dynamic>> get roundFinishedStream => _roundFinishedController.stream;
+  Stream<Map<String, dynamic>> get giveUpResultStream => _giveUpResultController.stream;
+  Stream<Map<String, dynamic>> get progressiveRevealStream => _progressiveRevealController.stream;
 
   factory GameSocketService() {
     return _instance;
@@ -71,6 +77,18 @@ class GameSocketService {
 
     socket.on('scoreboardUpdate', (data) {
       _scoreboardUpdateController.add(Map<String, dynamic>.from(data));
+    });
+
+    socket.on('roundFinished', (data) {
+      _roundFinishedController.add(Map<String, dynamic>.from(data));
+    });
+
+    socket.on('giveUpResult', (data) {
+      _giveUpResultController.add(Map<String, dynamic>.from(data));
+    });
+
+    socket.on('progressiveReveal', (data) {
+      _progressiveRevealController.add(Map<String, dynamic>.from(data));
     });
 
     socket.onDisconnect((_) => print('Disconnected'));

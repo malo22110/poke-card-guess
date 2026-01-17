@@ -58,6 +58,9 @@ class _GameScreenState extends State<GameScreen> {
   StreamSubscription? _roundSub;
   StreamSubscription? _guessResultSub;
   StreamSubscription? _scoreboardSub;
+  StreamSubscription? _roundFinishedSub;
+  StreamSubscription? _giveUpResultSub;
+  StreamSubscription? _progressiveRevealSub;
   
   // Share tracking - ensure each button only increments once per game
   bool _hasSharedViaSystem = false;
@@ -341,10 +344,10 @@ class _GameScreenState extends State<GameScreen> {
     _roundSub?.cancel();
     _guessResultSub?.cancel();
     _scoreboardSub?.cancel();
+    _roundFinishedSub?.cancel();
+    _giveUpResultSub?.cancel();
+    _progressiveRevealSub?.cancel();
     _countdownTimer?.cancel();
-    // Remove specific listeners attached manually to avoid duplicates if we come back
-    _socketService.socket.off('roundFinished');
-    _socketService.socket.off('giveUpResult');
     super.dispose();
   }
 
@@ -471,13 +474,13 @@ class _GameScreenState extends State<GameScreen> {
        }
     });
 
-    _socketService.socket.on('giveUpResult', (data) {
-        if (mounted) {
-           _showResult(data ?? {});
-        }
+    _giveUpResultSub = _socketService.giveUpResultStream.listen((data) {
+       if (mounted) {
+          _showResult(data);
+       }
     });
 
-    _socketService.socket.on('roundFinished', (data) {
+    _roundFinishedSub = _socketService.roundFinishedStream.listen((data) {
        if (mounted) {
          // This overrides whatever we have, ensuring everyone sees the result
          // data.result contains everything
@@ -485,7 +488,7 @@ class _GameScreenState extends State<GameScreen> {
        }
     });
 
-    _socketService.socket.on('progressiveReveal', (data) {
+    _progressiveRevealSub = _socketService.progressiveRevealStream.listen((data) {
        if (mounted) {
          setState(() {
            if (data['croppedImage'] != null) {
