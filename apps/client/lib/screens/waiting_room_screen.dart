@@ -29,6 +29,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   int _playerCount = 1;
   List<String> _playerList = [];
   bool _isLoading = false;
+  bool _isInitialized = false;
   String? _error;
   Map<String, dynamic>? _gameConfig;
 
@@ -46,7 +47,8 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     
-    if (args != null && args['lobbyId'] != null) {
+    if (args != null && args['lobbyId'] != null && !_isInitialized) {
+      _isInitialized = true;
       lobbyId = args['lobbyId'];
       isHost = args['isHost'] == true || args['isHost'] == 'true';
       authToken = args['authToken'];
