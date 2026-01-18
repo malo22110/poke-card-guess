@@ -263,7 +263,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: const AssetImage('assets/images/landscape.png'),
+            image: const AssetImage('assets/images/landscape.webp'),
             fit: BoxFit.cover,
             colorFilter: ColorFilter.mode(
               Colors.black.withOpacity(0.6),
@@ -279,7 +279,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 children: [
                   const SizedBox(height: kToolbarHeight + 16),
                   Image.asset(
-                    'assets/images/pokecardguess.png',
+                    'assets/images/pokecardguess.webp',
                     height: 180,
                     fit: BoxFit.contain,
                   ),

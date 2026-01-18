@@ -19,7 +19,7 @@ class AppDrawer extends StatelessWidget {
               decoration: const BoxDecoration(
                 color: Colors.black26,
                 image: DecorationImage(
-                  image: AssetImage('assets/images/pokecardguess.png'),
+                  image: AssetImage('assets/images/pokecardguess.webp'),
                   fit: BoxFit.contain,
                   opacity: 0.5,
                 ),

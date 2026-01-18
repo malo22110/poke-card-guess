@@ -25,7 +25,7 @@ class StoryShareCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.indigo.shade900, // Fallback color
         image: DecorationImage(
-          image: const AssetImage('assets/images/landscape.png'),
+          image: const AssetImage('assets/images/landscape.webp'),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
             Colors.black.withOpacity(0.6), 
@@ -46,7 +46,7 @@ class StoryShareCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Image.asset(
-              'assets/images/pokecardguess.png',
+              'assets/images/pokecardguess.webp',
               height: 100,
               fit: BoxFit.contain,
               errorBuilder: (context, error, stackTrace) => const Text(

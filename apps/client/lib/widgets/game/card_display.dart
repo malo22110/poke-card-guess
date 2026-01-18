@@ -123,7 +123,7 @@ class _CardDisplayState extends State<CardDisplay> with SingleTickerProviderStat
             child: Opacity(
               opacity: 0.5,
               child: Image.asset(
-                'assets/images/interogation.png',
+                'assets/images/interogation.webp',
                 width: 120,
                 height: 120,
                 fit: BoxFit.contain,

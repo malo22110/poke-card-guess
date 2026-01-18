@@ -259,7 +259,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _shareOnX() async {
-      final text = Uri.encodeComponent('I just scored $score points in PokeCardGuess! Can you beat me? 🃏✨\n\nPlay now: https://pokecardguess.com\n\n#Pokemon #PokeCardGuess');
+      final text = Uri.encodeComponent('I just scored $score points in PokeCardGuess! Can you beat me? 🃏✨\n\nPlay now: https://www.pokecardguess.com\n\n#Pokemon #PokeCardGuess');
       final url = Uri.parse('https://x.com/intent/post?text=$text');
       launchUrl(url, mode: LaunchMode.externalApplication);
       

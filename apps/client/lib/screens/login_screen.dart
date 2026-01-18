@@ -21,7 +21,7 @@ class LoginScreen extends StatelessWidget {
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: const AssetImage('assets/images/landscape.png'),
+            image: const AssetImage('assets/images/landscape.webp'),
             fit: BoxFit.cover,
             colorFilter: ColorFilter.mode(
               Colors.black.withOpacity(0.6),
@@ -45,7 +45,7 @@ class LoginScreen extends StatelessWidget {
                 children: [
                   // Logo / Title area
                   Image.asset(
-                    'assets/images/pokecardguess.png',
+                    'assets/images/pokecardguess.webp',
                     height: 300,
                     fit: BoxFit.contain,
                   ),
