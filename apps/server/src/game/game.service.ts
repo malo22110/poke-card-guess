@@ -644,6 +644,7 @@ export class GameService {
         totalRounds: lobby.config.rounds,
         playerStatuses: this.getRoundPlayerStatuses(lobby),
         playerNames: Object.fromEntries(lobby.playerNames),
+        roundScore,
         unlockedTrophies,
       };
 

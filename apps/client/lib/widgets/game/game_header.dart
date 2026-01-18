@@ -17,158 +17,167 @@ class GameHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'PokeCard Guess',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withOpacity(0.3),
-                        offset: const Offset(2, 2),
-                        blurRadius: 4,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 600;
+
+        return Container(
+          padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PokeCard Guess',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 18 : 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.3),
+                            offset: const Offset(2, 2),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (!isSmallScreen) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Guess the Pokemon!',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (remainingSeconds != null) ...[
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 12 : 20, 
+                    vertical: isSmallScreen ? 8 : 12
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getTimerColor().withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _getTimerColor(), width: 2),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.timer, color: _getTimerColor(), size: isSmallScreen ? 18 : 24),
+                      SizedBox(width: isSmallScreen ? 4 : 8),
+                      Text(
+                        '${remainingSeconds}s',
+                        style: TextStyle(
+                          color: _getTimerColor(),
+                          fontWeight: FontWeight.bold,
+                          fontSize: isSmallScreen ? 16 : 20,
+                        ),
                       ),
                     ],
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Guess the Pokemon!',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.8),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
+                SizedBox(width: isSmallScreen ? 4 : 8),
               ],
-            ),
-          ),
-          if (remainingSeconds != null) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: _getTimerColor().withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _getTimerColor(), width: 2),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.timer, color: _getTimerColor(), size: 24),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${remainingSeconds}s',
-                    style: TextStyle(
-                      color: _getTimerColor(),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
+              // Streak Counter
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 10 : 16, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: currentStreak >= 3
+                        ? [Colors.orange.shade700, Colors.red.shade700]
+                        : [Colors.purple.shade700, Colors.indigo.shade700],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: currentStreak >= 3 ? Colors.orange : Colors.purple.shade300,
+                    width: 2,
+                  ),
+                  boxShadow: currentStreak >= 3
+                      ? [
+                          BoxShadow(
+                            color: Colors.orange.withOpacity(0.5),
+                            blurRadius: 8,
+                            spreadRadius: 2,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      currentStreak >= 3 ? Icons.local_fire_department : Icons.whatshot,
+                      color: Colors.white,
+                      size: isSmallScreen ? 16 : 20,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          // Streak Counter
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: currentStreak >= 3
-                    ? [Colors.orange.shade700, Colors.red.shade700]
-                    : [Colors.purple.shade700, Colors.indigo.shade700],
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: currentStreak >= 3 ? Colors.orange : Colors.purple.shade300,
-                width: 2,
-              ),
-              boxShadow: currentStreak >= 3
-                  ? [
-                      BoxShadow(
-                        color: Colors.orange.withOpacity(0.5),
-                        blurRadius: 8,
-                        spreadRadius: 2,
+                    SizedBox(width: isSmallScreen ? 4 : 8),
+                    Text(
+                      '$currentStreak',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: isSmallScreen ? 14 : 16,
                       ),
-                    ]
-                  : null,
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  currentStreak >= 3 ? Icons.local_fire_department : Icons.whatshot,
-                  color: Colors.white,
-                  size: 20,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  '$currentStreak',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          AnimatedBuilder(
-            animation: SoundService(),
-            builder: (context, _) {
-              return GestureDetector(
+              ),
+              SizedBox(width: isSmallScreen ? 4.0 : 8.0),
+              GestureDetector(
                 onTap: () => SoundService().toggleMute(),
                 child: Container(
                   padding: const EdgeInsets.all(10),
-                  margin: const EdgeInsets.only(right: 8),
+                  margin: EdgeInsets.only(right: isSmallScreen ? 4 : 8),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.white.withOpacity(0.3)),
                   ),
-                  child: Icon(
-                    SoundService().isMuted ? Icons.volume_off : Icons.volume_up,
-                    color: Colors.white,
-                    size: 20,
+                  child: AnimatedBuilder(
+                    animation: SoundService(),
+                    builder: (context, _) => Icon(
+                      SoundService().isMuted ? Icons.volume_off : Icons.volume_up,
+                      color: Colors.white,
+                      size: isSmallScreen ? 16 : 20,
+                    ),
                   ),
                 ),
-              );
-            },
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.style, color: Colors.amber, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Round: $currentRound / $totalRounds',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 10 : 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.3)),
                 ),
-              ],
-            ),
+                child: Row(
+                  children: [
+                    Icon(Icons.style, color: Colors.amber, size: isSmallScreen ? 16 : 20),
+                    SizedBox(width: isSmallScreen ? 4 : 8),
+                    Text(
+                      isSmallScreen ? '$currentRound/$totalRounds' : 'Round: $currentRound / $totalRounds',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: isSmallScreen ? 14 : 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

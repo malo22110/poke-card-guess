@@ -308,6 +308,8 @@ class _GameScreenState extends State<GameScreen> {
   // Inline validation error for guess input
   String? _guessError;
   bool _isSubmitting = false;
+  int? _lastRoundPoints;
+  String? _userGuess;
 
   @override
   void initState() {
@@ -602,6 +604,10 @@ class _GameScreenState extends State<GameScreen> {
          // Fallback: increment local score if server didn't send scores
          score++;
        }
+
+       if (result['roundScore'] != null) {
+          _lastRoundPoints = result['roundScore'];
+       }
        
        if (result['playerStatuses'] != null) {
           if (result['playerStatuses'] is List) {
@@ -732,6 +738,9 @@ class _GameScreenState extends State<GameScreen> {
       error = null;
       _isWaitingForRoundEnd = false; // Reset waiting state for new round
       _isSubmitting = false;
+      _lastRoundPoints = null;
+      _userGuess = null; // Reset guess
+      
       
       // Extract scores if available
       if (data['scores'] != null) {
@@ -769,6 +778,7 @@ class _GameScreenState extends State<GameScreen> {
     
     setState(() {
       _isSubmitting = true;
+      _userGuess = _guessController.text;
     });
 
     _socketService.makeGuess(_lobbyId!, _guestId ?? 'guest', _guessController.text);
@@ -1195,6 +1205,8 @@ class _GameScreenState extends State<GameScreen> {
                 isCorrect: _isCorrect,
                 revealedName: _revealedName,
                 revealedSet: _revealedSet,
+                score: _lastRoundPoints,
+                userGuess: _userGuess,
               ),
           ],
         );
