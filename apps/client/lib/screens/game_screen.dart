@@ -307,6 +307,7 @@ class _GameScreenState extends State<GameScreen> {
   
   // Inline validation error for guess input
   String? _guessError;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -472,6 +473,7 @@ class _GameScreenState extends State<GameScreen> {
             SoundService().playSound(SoundService.wrong);
             setState(() {
               _guessError = 'Incorrect! Try again.';
+              _isSubmitting = false;
             });
             // Update streak after incorrect guess (it will be reset)
             _fetchCurrentStreak();
@@ -759,8 +761,22 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void checkGuess() {
-    if (_lobbyId == null || _guessController.text.isEmpty) return;
+    if (_lobbyId == null || _guessController.text.isEmpty || _isSubmitting || _isCorrect == true) return;
+    
+    setState(() {
+      _isSubmitting = true;
+    });
+
     _socketService.makeGuess(_lobbyId!, _guestId ?? 'guest', _guessController.text);
+    
+    // Failsafe: Reset submitting state if no response after 5 seconds
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted && _isSubmitting && _isCorrect != true) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    });
   }
 
   void giveUp() {
@@ -1160,6 +1176,7 @@ class _GameScreenState extends State<GameScreen> {
                 onGuessSubmitted: checkGuess,
                 onGiveUp: giveUp,
                 errorText: _guessError,
+                isSubmitting: _isSubmitting,
                 onChanged: (value) {
                   if (_guessError != null) {
                     setState(() {

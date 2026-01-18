@@ -6,6 +6,7 @@ class GuessInput extends StatefulWidget {
   final VoidCallback onGiveUp;
   final String? errorText;
   final ValueChanged<String>? onChanged;
+  final bool isSubmitting;
 
   const GuessInput({
     super.key,
@@ -14,6 +15,7 @@ class GuessInput extends StatefulWidget {
     required this.onGiveUp,
     this.errorText,
     this.onChanged,
+    this.isSubmitting = false,
   });
 
   @override
@@ -29,7 +31,7 @@ class _GuessInputState extends State<GuessInput> {
     _focusNode = FocusNode();
     // Request focus immediately when the widget is built/shown (e.g. start of round)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusNode.requestFocus();
+      if (!widget.isSubmitting) _focusNode.requestFocus();
     });
   }
 
@@ -43,8 +45,15 @@ class _GuessInputState extends State<GuessInput> {
   void didUpdateWidget(GuessInput oldWidget) {
     super.didUpdateWidget(oldWidget);
     // If error text appears, ensure we keep focus so user can type again
-    if (widget.errorText != null && widget.errorText != oldWidget.errorText) {
+    // Only if not submitting
+    if (widget.errorText != null && widget.errorText != oldWidget.errorText && !widget.isSubmitting) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        _focusNode.requestFocus();
+      });
+    }
+    // If submitting changed from true to false, regain focus
+    if (oldWidget.isSubmitting && !widget.isSubmitting) {
+       WidgetsBinding.instance.addPostFrameCallback((_) {
         _focusNode.requestFocus();
       });
     }
@@ -60,6 +69,7 @@ class _GuessInputState extends State<GuessInput> {
             controller: widget.controller,
             focusNode: _focusNode,
             autofocus: true,
+            enabled: !widget.isSubmitting,
             style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
             onChanged: widget.onChanged,
             decoration: InputDecoration(
@@ -94,17 +104,24 @@ class _GuessInputState extends State<GuessInput> {
                 borderSide: const BorderSide(color: Colors.amberAccent, width: 3),
               ),
               prefixIcon: const Icon(Icons.search, color: Colors.black54),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.send, color: Color(0xFF3B4CCA)),
-                onPressed: () {
-                  widget.onGuessSubmitted();
-                  _focusNode.requestFocus();
-                },
-              ),
+              suffixIcon: widget.isSubmitting 
+                ? const Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.send, color: Color(0xFF3B4CCA)),
+                    onPressed: () {
+                      widget.onGuessSubmitted();
+                      _focusNode.requestFocus();
+                    },
+                  ),
             ),
             onSubmitted: (_) {
-              widget.onGuessSubmitted();
-              _focusNode.requestFocus();
+              if (!widget.isSubmitting) {
+                widget.onGuessSubmitted();
+                _focusNode.requestFocus(); // Keep focus
+              }
             },
             textInputAction: TextInputAction.send,
             cursorColor: const Color(0xFF3B4CCA),
@@ -116,9 +133,10 @@ class _GuessInputState extends State<GuessInput> {
           children: [
 
             TextButton(
-              onPressed: widget.onGiveUp,
+              onPressed: widget.isSubmitting ? null : widget.onGiveUp,
               style: TextButton.styleFrom(
                 foregroundColor: Colors.white,
+                disabledForegroundColor: Colors.white30,
                 backgroundColor: Colors.black.withOpacity(0.3),
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(

@@ -502,6 +502,20 @@ export class GameService {
     }
 
     const currentCard = lobby.cards[lobby.currentRound - 1];
+
+    // Prevent multiple correct guesses in the same round
+    if (lobby.roundResults.get(userId)) {
+      return {
+        correct: true,
+        alreadyGuessed: true,
+        name: currentCard.name,
+        fullImageUrl: currentCard.fullImageUrl,
+        currentRound: lobby.currentRound,
+        totalRounds: lobby.config.rounds,
+        scores: Object.fromEntries(lobby.scores),
+      };
+    }
+
     const normalizedGuess = this.normalizeString(guess);
     const normalizedActual = this.normalizeString(currentCard.name);
 
