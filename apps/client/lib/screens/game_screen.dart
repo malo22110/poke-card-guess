@@ -967,12 +967,13 @@ class _GameScreenState extends State<GameScreen> {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  card['imageUrl']!,
+                                child: CachedNetworkImage(
+                                  imageUrl: card['imageUrl']!,
                                   width: 60,
                                   height: 84,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (c, e, s) => Container(width: 60, height: 84, color: Colors.grey),
+                                  errorWidget: (c, e, s) => Container(width: 60, height: 84, color: Colors.grey),
+                                  placeholder: (c, u) => Container(width: 60, height: 84, color: Colors.grey),
                                 ),
                               ),
                               const SizedBox(width: 16),

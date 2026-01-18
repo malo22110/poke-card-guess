@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pokecardguess/config/app_config.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../services/trophy_service.dart';
 import '../services/auth_service.dart';
@@ -784,10 +785,11 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
                 Expanded(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      card['image'] ?? '',
+                    child: CachedNetworkImage(
+                      imageUrl: card['image'] ?? '',
                       fit: BoxFit.contain,
-                      errorBuilder: (c, o, s) => Container(color: Colors.grey, child: const Icon(Icons.broken_image)),
+                      errorWidget: (c, o, s) => Container(color: Colors.grey, child: const Icon(Icons.broken_image)),
+                      placeholder: (c, u) => Container(color: Colors.white10),
                     ),
                   ),
                 ),
@@ -1072,11 +1074,12 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
-                      child: Image.network(
-                        set['logo'].toString().endsWith('.png') 
+                      child: CachedNetworkImage(
+                        imageUrl: set['logo'].toString().endsWith('.png') 
                             ? set['logo'] 
                             : '${set['logo']}.png',
-                        errorBuilder: (c, o, s) => const Icon(Icons.image, color: Colors.white24),
+                        errorWidget: (c, o, s) => const Icon(Icons.image, color: Colors.white24),
+                        placeholder: (c, u) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
                         fit: BoxFit.contain,
                       )
                     ),

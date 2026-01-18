@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pokecardguess/config/app_config.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class StoryShareCard extends StatelessWidget {
   final int score;
@@ -66,7 +67,7 @@ class StoryShareCard extends StatelessWidget {
           if (userPicture != null)
             CircleAvatar(
               radius: 40,
-              backgroundImage: NetworkImage(userPicture!),
+              backgroundImage: CachedNetworkImageProvider(userPicture!),
               backgroundColor: Colors.white,
             ),
           const SizedBox(height: 4),
@@ -121,12 +122,13 @@ class StoryShareCard extends StatelessWidget {
                    ),
                    child: ClipRRect(
                      borderRadius: BorderRadius.circular(6),
-                     child: Image.network(
-                       card['imageUrl'] ?? '',
+                     child: CachedNetworkImage(
+                       imageUrl: card['imageUrl'] ?? '',
                        width: 60,
                        height: 84,
                        fit: BoxFit.cover,
-                       errorBuilder: (c,e,s) => Container(width:60, height:84, color:Colors.white24),
+                       errorWidget: (context, url, error) => Container(width:60, height:84, color:Colors.white24),
+                       placeholder: (context, url) => Container(width:60, height:84, color:Colors.white24),
                      ),
                    ),
                  );
