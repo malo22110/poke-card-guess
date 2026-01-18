@@ -465,6 +465,9 @@ class _GameScreenState extends State<GameScreen> {
        
        if (data['correct'] == true) {
          SoundService().playSound(SoundService.correct);
+         setState(() {
+           _isSubmitting = false;
+         });
          _showResult(data);
          // Update streak after correct guess
          _fetchCurrentStreak();
@@ -728,6 +731,7 @@ class _GameScreenState extends State<GameScreen> {
       _guessController.clear();
       error = null;
       _isWaitingForRoundEnd = false; // Reset waiting state for new round
+      _isSubmitting = false;
       
       // Extract scores if available
       if (data['scores'] != null) {
@@ -780,9 +784,10 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void giveUp() {
-    if (_lobbyId == null) return;
+    if (_lobbyId == null || _isSubmitting) return;
     setState(() {
       _isWaitingForRoundEnd = true;
+      _isSubmitting = true;
     });
     _socketService.giveUp(_lobbyId!, _guestId ?? 'guest');
   }
