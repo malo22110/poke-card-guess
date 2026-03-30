@@ -86,10 +86,13 @@ class MyApp extends StatelessWidget {
             // Route Guard Logic
             // If user is NOT logged in (neither guest nor auth), restricted to Login or public pages if any
             // Actually, if not logged in, we redirect to Login for almost everything except maybe Terms?
-            final publicRoutes = ['/login', '/terms', '/auth_callback', '/profile-setup'];
+            final publicRoutes = ['/login', '/terms', '/auth_callback', '/profile-setup', '/join'];
             
             if (authService.currentUser == null && !publicRoutes.contains(uri.path)) {
-               return MaterialPageRoute(builder: (_) => const LoginScreen(), settings: const RouteSettings(name: '/login'));
+               return MaterialPageRoute(
+                 builder: (_) => LoginScreen(nextRoute: uri.toString()), 
+                 settings: const RouteSettings(name: '/login')
+               );
             }
 
             // If user IS logged in, prevent access to Login
@@ -105,7 +108,10 @@ class MyApp extends StatelessWidget {
 
             switch (uri.path) {
               case '/login':
-                return MaterialPageRoute(builder: (_) => const LoginScreen(), settings: newSettings);
+                return MaterialPageRoute(
+                  builder: (_) => LoginScreen(nextRoute: args['nextRoute'] as String?), 
+                  settings: newSettings
+                );
               case '/game':
                 return MaterialPageRoute(builder: (_) => const GameScreen(), settings: newSettings);
               case '/lobby':
@@ -126,6 +132,7 @@ class MyApp extends StatelessWidget {
                   builder: (_) => ProfileSetupScreen(
                     authToken: args['authToken'] ?? authToken,
                     isGuest: args['isGuest'] == true,
+                    nextRoute: args['nextRoute'] as String?,
                   ), 
                   settings: newSettings
                 );
@@ -137,6 +144,30 @@ class MyApp extends StatelessWidget {
                 return MaterialPageRoute(builder: (_) => LeaderboardScreen(authToken: authToken), settings: newSettings);
               case '/donate':
                 return MaterialPageRoute(builder: (_) => DonationScreen(authToken: authToken), settings: newSettings);
+              case '/join':
+                // Deep-link join: ?lobbyId=XXXX
+                // If not logged in, redirect to login — the lobby join screen will be revisited after auth.
+                // If logged in, go straight to the waiting room as a non-host.
+                final joinLobbyId = args['lobbyId'] as String? ?? '';
+                if (authService.currentUser == null) {
+                  return MaterialPageRoute(
+                    builder: (_) => LoginScreen(nextRoute: uri.toString()),
+                    settings: const RouteSettings(name: '/login'),
+                  );
+                }
+                return MaterialPageRoute(
+                  builder: (_) => const WaitingRoomScreen(),
+                  settings: RouteSettings(
+                    name: '/waiting-room',
+                    arguments: {
+                      'lobbyId': joinLobbyId,
+                      'isHost': false,
+                      'authToken': authToken,
+                      'guestId': authService.currentUser?.id,
+                      'guestName': authService.currentUser?.name,
+                    },
+                  ),
+                );
             }
             return null;
           },

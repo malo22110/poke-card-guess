@@ -60,11 +60,10 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
         _guestName = args['guestName']; // Read guestName
 
         if (authToken != null && _userName == null) {
-          _fetchUserProfile();
+          _fetchUserProfile().then((_) => _joinGameApi());
+        } else {
+          _joinGameApi();
         }
-
-        _initSocket();
-        _fetchLobbyDetails();
       }
     } else {
       lobbyId = '';
@@ -123,6 +122,33 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
       }
     } catch (e) {
       print('Error fetching lobby details: $e');
+    }
+  }
+
+  Future<void> _joinGameApi() async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/game/join'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (authToken != null) 'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({
+          'lobbyId': lobbyId,
+          'guestId': guestId, // Send guestId if available
+          'guestName': _guestName,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Successfully joined, now initialize socket and fetch details
+        _initSocket();
+        _fetchLobbyDetails();
+      } else {
+        setState(() => _error = 'Failed to join game: ${response.statusCode}');
+      }
+    } catch (e) {
+      setState(() => _error = 'Error joining game: $e');
     }
   }
   
@@ -195,6 +221,26 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
     _socketService.startGame(lobbyId, guestId ?? 'host');
   }
 
+  void _copyJoinLink() {
+    final joinUrl = '${AppConfig.clientUrl}/#/join?lobbyId=$lobbyId';
+    Clipboard.setData(ClipboardData(text: joinUrl));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.greenAccent),
+            const SizedBox(width: 12),
+            Expanded(child: Text('Invite link copied: $joinUrl', style: const TextStyle(fontSize: 12))),
+          ],
+        ),
+        backgroundColor: const Color(0xFF1a237e),
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   void _navigateToGame() {
     final uri = Uri(path: '/game', queryParameters: {
       'lobbyId': lobbyId,
@@ -247,7 +293,57 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                     'Lobby: ${lobbyId.isEmpty ? "Loading..." : lobbyId}',
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 2),
                   ),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: 16),
+                  
+                  // Invite Link Card
+                  Container(
+                    width: double.infinity,
+                    constraints: const BoxConstraints(maxWidth: 500),
+                    child: Material(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: _copyJoinLink,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.link, color: Colors.amber),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Invite Link',
+                                      style: TextStyle(color: Colors.white60, fontSize: 12),
+                                    ),
+                                    Text(
+                                      '${AppConfig.clientUrl}/#/join?lobbyId=$lobbyId',
+                                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(Icons.copy, color: Colors.amber, size: 20),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 32),
                   
                   Container(
                     padding: const EdgeInsets.all(24),

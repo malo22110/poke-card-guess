@@ -36,11 +36,12 @@ class AuthService extends ChangeNotifier {
       } else {
         // Check for guest session
         final guestName = await _storage.getGuestName();
+        final guestId = await _storage.getGuestId();
         // guestAvatar? storage doesn't seem to have it, but maybe we should add it or ignore for now.
         // Assuming guestAvatar is not persisted or we need to add it to storage. 
         // For now, if guestName exists, restore guest session.
         if (guestName != null) {
-           _currentUser = UserProfile.guest(guestName, null);
+           _currentUser = UserProfile.guest(guestName, null, overrideId: guestId);
         }
       }
     } catch (e) {
@@ -94,8 +95,8 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> loginAsGuest(String name, String? avatar) async {
-    await _storage.saveGuestName(name);
     _currentUser = UserProfile.guest(name, avatar);
+    await _storage.saveGuestName(name, guestId: _currentUser!.id);
     notifyListeners();
   }
 

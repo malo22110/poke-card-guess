@@ -9,10 +9,13 @@ class ProfileSetupScreen extends StatefulWidget {
   final String? authToken;
   final bool isGuest;
 
+  final String? nextRoute;
+
   const ProfileSetupScreen({
     super.key, 
     this.authToken, 
     this.isGuest = false,
+    this.nextRoute,
   });
 
   @override
@@ -83,7 +86,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         await authService.loginAsGuest(username, _selectedAvatar);
         
         if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/lobby');
+          if (widget.nextRoute != null) {
+            Navigator.of(context).pushReplacementNamed(widget.nextRoute!);
+          } else {
+            Navigator.of(context).pushReplacementNamed('/lobby');
+          }
         }
       } else {
         final response = await http.patch(
@@ -102,7 +109,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
            await authService.login(widget.authToken!); 
            
            if (mounted) {
-             Navigator.of(context).pushReplacementNamed('/lobby');
+             if (widget.nextRoute != null) {
+               Navigator.of(context).pushReplacementNamed(widget.nextRoute!);
+             } else {
+               Navigator.of(context).pushReplacementNamed('/lobby');
+             }
            }
         } else {
           throw Exception('Failed to update profile: ${response.body}');

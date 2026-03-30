@@ -4,7 +4,9 @@ import '../widgets/footer.dart';
 import 'package:pokecardguess/config/app_config.dart';
 
 class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
+  final String? nextRoute;
+
+  const LoginScreen({super.key, this.nextRoute});
 
   Future<void> _loginGoogle() async {
     final url = Uri.parse('${AppConfig.apiBaseUrl}/auth/google');
@@ -75,7 +77,10 @@ class LoginScreen extends StatelessWidget {
                       // Navigate to ProfileSetupScreen to set guest name
                       Navigator.of(context).pushNamed(
                         '/profile-setup',
-                        arguments: {'isGuest': true},
+                        arguments: {
+                          'isGuest': true,
+                          'nextRoute': nextRoute,
+                        },
                       );
                     },
                     child: Text(

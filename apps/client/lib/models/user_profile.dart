@@ -1,3 +1,4 @@
+import 'package:uuid/uuid.dart';
 
 class UserProfile {
   final String? id; // Backend ID for auth users, null or generated for guests?
@@ -14,12 +15,12 @@ class UserProfile {
     this.isGuest = false,
   });
 
-  factory UserProfile.guest(String name, String? avatar) {
+  factory UserProfile.guest(String name, String? avatar, {String? overrideId}) {
     return UserProfile(
+      id: overrideId ?? "guest-${const Uuid().v4()}",
       name: name,
       picture: avatar,
       isGuest: true,
-      // guestId might be needed for backend join?
     );
   }
 
