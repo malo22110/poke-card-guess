@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:pokecardguess/config/app_config.dart';
 
 class Scoreboard extends StatelessWidget {
   final Map<String, int> scores;
   final String? currentUserId;
   final Map<String, String>? playerStatuses;
   final Map<String, String>? playerNames;
+  final Map<String, String?>? playerPictures; // userId -> picture URL
   final VoidCallback? onShare;
 
   const Scoreboard({
@@ -13,8 +16,15 @@ class Scoreboard extends StatelessWidget {
     this.currentUserId,
     this.playerStatuses,
     this.playerNames,
+    this.playerPictures,
     this.onShare,
   });
+
+  String? _resolveAvatarUrl(String? pic) {
+    if (pic == null) return null;
+    if (pic.startsWith('http')) return pic;
+    return '${AppConfig.apiBaseUrl}$pic';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,24 +82,40 @@ class Scoreboard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  // Rank
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: _getRankColor(index),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${index + 1}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                  // Avatar (with rank overlay)
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      () {
+                        final pic = _resolveAvatarUrl(playerPictures?[playerId]);
+                        final initial = (playerNames?[playerId] ?? playerId).substring(0, 1).toUpperCase();
+                        return CircleAvatar(
+                          radius: 16,
+                          backgroundColor: _getRankColor(index),
+                          backgroundImage: pic != null
+                              ? CachedNetworkImageProvider(pic)
+                              : null,
+                          child: pic == null
+                              ? Text(initial, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))
+                              : null,
+                        );
+                      }(),
+                      Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: _getRankColor(index),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.black26, width: 1),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${index + 1}',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 8),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                   const SizedBox(width: 12),
                   // Player Details (Two Rows)

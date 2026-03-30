@@ -275,6 +275,7 @@ class _GameScreenState extends State<GameScreen> {
   Map<String, int> _scores = {};
   Map<String, String> _playerStatuses = {};
   Map<String, String> _playerNames = {};
+  Map<String, String?> _playerPictures = {}; // userId -> picture URL
   bool _isWaitingForRoundEnd = false;
   
   int _currentRound = 0;
@@ -675,6 +676,11 @@ class _GameScreenState extends State<GameScreen> {
     if (data['playerNames'] != null) {
       _playerNames = Map<String, String>.from(data['playerNames']);
     }
+    if (data['playerPictures'] != null) {
+      _playerPictures = (data['playerPictures'] as Map).map(
+        (k, v) => MapEntry(k.toString(), v as String?),
+      );
+    }
     
     if (data['status'] == 'FINISHED') {
        setState(() {
@@ -964,6 +970,7 @@ class _GameScreenState extends State<GameScreen> {
               scores: _scores,
               currentUserId: _guestId,
               playerNames: _playerNames,
+              playerPictures: _playerPictures,
               onShare: _shareStoryImage,
             ),
           const SizedBox(height: 24),
@@ -1235,6 +1242,7 @@ class _GameScreenState extends State<GameScreen> {
           currentUserId: _guestId,
           playerStatuses: _playerStatuses,
           playerNames: _playerNames,
+          playerPictures: _playerPictures,
         );
 
         if (isMobile) {

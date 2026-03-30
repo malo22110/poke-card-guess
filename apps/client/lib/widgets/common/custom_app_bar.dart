@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/auth_service.dart';
+import '../../config/app_config.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -15,10 +17,18 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     @Deprecated('Use AuthService instead') String? userName, 
   });
 
+  /// Resolves a picture URL: prefixes relative /uploads/ paths with the API base URL.
+  String? _resolveAvatarUrl(String? pic) {
+    if (pic == null) return null;
+    if (pic.startsWith('http')) return pic;
+    return '${AppConfig.apiBaseUrl}$pic';
+  }
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final user = authService.currentUser;
+    final avatarUrl = _resolveAvatarUrl(user?.picture);
 
     return AppBar(
       title: Text(
@@ -71,10 +81,10 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   child: CircleAvatar(
                     backgroundColor: Colors.amber.withOpacity(0.8),
                     radius: 18,
-                    backgroundImage: user.picture != null 
-                        ? NetworkImage(user.picture!) 
+                    backgroundImage: avatarUrl != null
+                        ? CachedNetworkImageProvider(avatarUrl)
                         : null,
-                    child: user.picture == null 
+                    child: avatarUrl == null
                         ? const Icon(Icons.person, color: Colors.white, size: 20)
                         : null,
                   ),

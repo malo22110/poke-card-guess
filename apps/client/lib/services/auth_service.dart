@@ -84,6 +84,15 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Call this after updating the profile picture to re-fetch and update the header avatar.
+  Future<void> refreshProfile() async {
+    final token = await _storage.getToken();
+    if (token != null) {
+      await _fetchUserProfile(token);
+      notifyListeners();
+    }
+  }
+
   Future<void> loginAsGuest(String name, String? avatar) async {
     await _storage.saveGuestName(name);
     _currentUser = UserProfile.guest(name, avatar);

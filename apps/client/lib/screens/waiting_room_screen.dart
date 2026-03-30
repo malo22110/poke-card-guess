@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:pokecardguess/config/app_config.dart';
 import '../services/game_socket_service.dart';
 import '../widgets/common/custom_app_bar.dart';
@@ -24,10 +25,12 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   final _socketService = GameSocketService();
   StreamSubscription? _playerCountSub;
   StreamSubscription? _playerListSub;
+  StreamSubscription? _playerPicturesSub;
   StreamSubscription? _statusSub;
 
   int _playerCount = 1;
   List<String> _playerList = [];
+  Map<String, String?> _playerPictures = {}; // name -> picture URL
   bool _isLoading = false;
   bool _isInitialized = false;
   String? _error;
@@ -105,8 +108,15 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
         if (mounted) {
           setState(() {
             _gameConfig = data;
-            if (data['playerList'] != null) {
-              _playerList = List<String>.from(data['playerList']);
+            // Status endpoint returns players: [{id, name, picture}]
+            if (data['players'] != null) {
+              final players = data['players'] as List;
+              _playerList = players.map((p) => p['name'].toString()).toList();
+              for (final p in players) {
+                final name = p['name'].toString();
+                final pic = p['picture'] as String?;
+                if (pic != null) _playerPictures[name] = pic;
+              }
             }
           });
         }
@@ -143,6 +153,14 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
       }
     });
 
+    _playerPicturesSub = _socketService.playerPicturesStream.listen((pics) {
+      if (mounted) {
+        setState(() {
+          _playerPictures = pics;
+        });
+      }
+    });
+
     bool navigationTriggered = false;
 
     _statusSub = _socketService.gameStatusStream.listen((data) {
@@ -164,6 +182,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   void dispose() {
     _playerCountSub?.cancel();
     _playerListSub?.cancel();
+    _playerPicturesSub?.cancel();
     _statusSub?.cancel();
     // Do not disconnect socket service here as GameScreen needs it?
     // Actually GameScreen might need it. Let's keep it connected.
@@ -253,15 +272,26 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                             spacing: 8,
                             runSpacing: 8,
                             alignment: WrapAlignment.center,
-                            children: _playerList.map((player) {
-                               final isMe = (player == guestId || player == authToken || player == _guestName || player == _userName);
+                            children: _playerList.map((playerName) {
+                               final isMe = (playerName == _guestName || playerName == _userName);
+                               final picUrl = _playerPictures[playerName];
+                               final resolvedUrl = picUrl == null
+                                   ? null
+                                   : picUrl.startsWith('http')
+                                       ? picUrl
+                                       : '${AppConfig.apiBaseUrl}$picUrl';
                                return Chip(
                                   avatar: CircleAvatar(
                                     backgroundColor: isMe ? Colors.amber : Colors.indigo.shade900,
-                                    child: Text(player.substring(0, 1).toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10)),
+                                    backgroundImage: resolvedUrl != null
+                                        ? CachedNetworkImageProvider(resolvedUrl)
+                                        : null,
+                                    child: resolvedUrl == null
+                                        ? Text(playerName.substring(0, 1).toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10))
+                                        : null,
                                   ),
                                   label: Text(
-                                      isMe ? 'You ($player)' : player,
+                                      isMe ? 'You ($playerName)' : playerName,
                                       style: TextStyle(
                                         fontSize: 14, 
                                         fontWeight: isMe ? FontWeight.bold : FontWeight.normal
@@ -270,7 +300,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                                   backgroundColor: isMe ? Colors.amber.withOpacity(0.2) : Colors.white.withOpacity(0.9),
                                   side: isMe ? const BorderSide(color: Colors.amber) : null,
                                );
-                            }).toList(),
+                             }).toList(),
                           )
                         else
                           const SizedBox(

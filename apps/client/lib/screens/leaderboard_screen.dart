@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:pokecardguess/config/app_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   final String? authToken;
@@ -349,8 +350,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                   CircleAvatar(
                     radius: 20,
                     backgroundColor: Colors.white24,
-                    backgroundImage: userPic != null ? NetworkImage(userPic) : null,
-                    child: userPic == null 
+                    backgroundImage: _resolveAvatarUrl(userPic) != null
+                        ? CachedNetworkImageProvider(_resolveAvatarUrl(userPic)!)
+                        : null,
+                    child: _resolveAvatarUrl(userPic) == null 
                       ? Text(userName[0].toUpperCase(), style: const TextStyle(color: Colors.white))
                       : null,
                   ),
@@ -425,6 +428,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         );
       },
     );
+  }
+
+  /// Resolves a picture URL: prefixes relative /uploads/ paths with the API base URL.
+  String? _resolveAvatarUrl(String? pic) {
+    if (pic == null) return null;
+    if (pic.startsWith('http')) return pic;
+    return '${AppConfig.apiBaseUrl}$pic';
   }
 
   Widget _buildSocialIcon(IconData icon, Color color, String url) {

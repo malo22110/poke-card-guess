@@ -51,6 +51,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(lobbyId).emit('playerUpdate', {
       count: status.players.length,
       playerList: status.players.map((p) => p.name),
+      playerPictures: Object.fromEntries(
+        status.players.map((p) => [p.name, p.picture]),
+      ),
     });
   }
 

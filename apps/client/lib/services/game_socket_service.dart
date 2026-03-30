@@ -11,6 +11,7 @@ class GameSocketService {
   // Stream controllers for events
   final _playerCountController = StreamController<int>.broadcast();
   final _playerListController = StreamController<List<String>>.broadcast();
+  final _playerPicturesController = StreamController<Map<String, String?>>.broadcast();
   final _gameStatusController = StreamController<Map<String, dynamic>>.broadcast();
   final _gameStartedController = StreamController<Map<String, dynamic>>.broadcast();
   final _roundUpdateController = StreamController<Map<String, dynamic>>.broadcast();
@@ -22,6 +23,7 @@ class GameSocketService {
 
   Stream<int> get playerCountStream => _playerCountController.stream;
   Stream<List<String>> get playerListStream => _playerListController.stream;
+  Stream<Map<String, String?>> get playerPicturesStream => _playerPicturesController.stream;
   Stream<Map<String, dynamic>> get gameStatusStream => _gameStatusController.stream;
   Stream<Map<String, dynamic>> get gameStartedStream => _gameStartedController.stream;
   Stream<Map<String, dynamic>> get roundUpdateStream => _roundUpdateController.stream;
@@ -57,6 +59,13 @@ class GameSocketService {
         }
         if (data['playerList'] != null) {
           _playerListController.add(List<String>.from(data['playerList']));
+        }
+        if (data['playerPictures'] != null) {
+          _playerPicturesController.add(
+            (data['playerPictures'] as Map).map(
+              (k, v) => MapEntry(k.toString(), v as String?),
+            ),
+          );
         }
       }
     });

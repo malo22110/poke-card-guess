@@ -11,17 +11,36 @@ import {
 } from '@nestjs/common';
 import { GameService } from './game.service';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
+import { PrismaService } from '../prisma.service';
 
 interface RequestWithUser extends Request {
   user: {
     id: string;
     userId: string;
+    name?: string;
   };
 }
 
 @Controller('game')
 export class GameController {
-  constructor(private readonly gameService: GameService) {}
+  constructor(
+    private readonly gameService: GameService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  /** Fetch the authenticated user's picture from DB (or null for guests). */
+  private async getUserPicture(userId: string | null): Promise<string | null> {
+    if (!userId) return null;
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { picture: true },
+      });
+      return user?.picture ?? null;
+    } catch {
+      return null;
+    }
+  }
 
   @Post('create')
   @UseGuards(OptionalJwtAuthGuard)
@@ -45,8 +64,9 @@ export class GameController {
       );
     }
     const userId = req.user.id || req.user.userId;
+    const picture = await this.getUserPicture(userId);
 
-    return await this.gameService.createLobby(
+    const lobby = await this.gameService.createLobby(
       userId,
       {
         rounds: body.rounds,
@@ -58,6 +78,16 @@ export class GameController {
       req.user.name || body.guestName, // Prioritize auth name
       body.gameModeId,
     );
+
+    // Backfill the host picture which is initialized as null in createLobby
+    if (picture) {
+      const inMemoryLobby = this.gameService.getLobby(lobby.id);
+      if (inMemoryLobby) {
+        inMemoryLobby.playerPictures.set(userId, picture);
+      }
+    }
+
+    return lobby;
   }
 
   @Post('join')
@@ -72,17 +102,14 @@ export class GameController {
 
     let userName = body.guestName;
 
-    // If authenticated and no name provided, we could fetch it, but for now fallback to userId is okay
-    // or we can expect the client to send 'guestName' (which is just 'displayName') even for auth users if we want.
-    // However, since we updated the profile, maybe we should fetch it.
-    // But I haven't injected UsersService here yet.
+    const picture = await this.getUserPicture(req.user ? userId : null);
 
     // Call service to join
-    // Fix argument order: lobbyId, userId, userName
     const lobby = await this.gameService.joinLobby(
       body.lobbyId,
       userId,
       userName || 'Guest',
+      picture,
     );
 
     // Return lobby info AND the userId (guestId) if it was generated/used
@@ -137,7 +164,7 @@ export class GameController {
   async getRound(@Param('lobbyId') lobbyId: string) {
     const lobby = this.gameService.getLobby(lobbyId);
     if (!lobby) {
-      throw new HttpException('Lobby not found', HttpStatus.NOT_FOUND); // Import HttpException, HttpStatus if not available (they are)
+      throw new HttpException('Lobby not found', HttpStatus.NOT_FOUND);
     }
     return await this.gameService.getCurrentRoundData(lobby);
   }
@@ -153,6 +180,7 @@ export class GameController {
   async getRarities() {
     return await this.gameService.getAvailableRarities();
   }
+
   @Post('preview-cards')
   @UseGuards(OptionalJwtAuthGuard)
   async getPreviewCards(

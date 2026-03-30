@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:pokecardguess/config/app_config.dart';
 import 'package:provider/provider.dart';
 import 'package:pokecardguess/services/auth_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String? authToken;
@@ -26,12 +28,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _highScore = 0;
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isUploadingPicture = false;
 
   final TextEditingController _instagramController = TextEditingController();
   final TextEditingController _tiktokController = TextEditingController();
   final TextEditingController _marketplaceController = TextEditingController();
   final TextEditingController _facebookController = TextEditingController();
   final TextEditingController _xController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -74,7 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
            try {
              loadedSocials = jsonDecode(data['socials']);
            } catch (e) {
-             print('Error parsing socials JSON: $e');
+             debugPrint('Error parsing socials JSON: $e');
            }
         }
 
@@ -91,7 +95,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _socials = loadedSocials;
             _instagramController.text = _socials['instagram'] ?? '';
             _tiktokController.text = _socials['tiktok'] ?? '';
-            // Backward compatibility for 'voggt' if present
             _marketplaceController.text = _socials['marketplace'] ?? _socials['voggt'] ?? '';
             _facebookController.text = _socials['facebook'] ?? '';
             _xController.text = _socials['x'] ?? '';
@@ -112,6 +115,75 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _userName = 'Error loading profile';
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _pickAndUploadPicture() async {
+    if (widget.authToken == null) return;
+
+    try {
+      final XFile? picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 90,
+      );
+      if (picked == null) return;
+
+      setState(() => _isUploadingPicture = true);
+
+      final bytes = await picked.readAsBytes();
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${AppConfig.apiBaseUrl}/users/profile-picture'),
+      );
+      request.headers['Authorization'] = 'Bearer ${widget.authToken}';
+      request.files.add(http.MultipartFile.fromBytes(
+        'file',
+        bytes,
+        filename: picked.name,
+      ));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final newPictureUrl = data['pictureUrl'] as String?;
+        if (newPictureUrl != null && mounted) {
+          // Clear the CachedNetworkImage cache for the old URL
+          if (_userPicture != null) {
+            CachedNetworkImage.evictFromCache(_userPicture!);
+          }
+          setState(() {
+            _userPicture = newPictureUrl;
+          });
+          // Refresh the AuthService so the header avatar updates immediately
+          if (mounted) {
+            await Provider.of<AuthService>(context, listen: false).refreshProfile();
+          }
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Profile picture updated! ✅'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        }
+      } else {
+        throw Exception('Upload failed: ${response.body}');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error uploading picture: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingPicture = false);
       }
     }
   }
@@ -161,6 +233,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Widget _buildAvatar() {
+    final pictureUrl = _userPicture != null
+        ? (_userPicture!.startsWith('/uploads/')
+            ? '${AppConfig.apiBaseUrl}$_userPicture'
+            : _userPicture!)
+        : null;
+
+    return GestureDetector(
+      onTap: widget.authToken != null ? _pickAndUploadPicture : null,
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          CircleAvatar(
+            radius: 52,
+            backgroundColor: Colors.amber.withOpacity(0.3),
+            child: _isUploadingPicture
+                ? const CircularProgressIndicator(color: Colors.amber)
+                : CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Colors.white12,
+                    backgroundImage: pictureUrl != null
+                        ? CachedNetworkImageProvider(pictureUrl)
+                        : null,
+                    child: pictureUrl == null
+                        ? const Icon(Icons.person, size: 50, color: Colors.white70)
+                        : null,
+                  ),
+          ),
+          if (widget.authToken != null)
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.amber,
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF1F2937), width: 2),
+              ),
+              child: const Icon(Icons.camera_alt, size: 16, color: Colors.black),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -181,12 +296,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.amber,
-                    backgroundImage: _userPicture != null ? NetworkImage(_userPicture!) : null,
-                    child: _userPicture == null ? const Icon(Icons.person, size: 50, color: Colors.white) : null,
-                  ),
+                  _buildAvatar(),
+                  const SizedBox(height: 8),
+                  if (widget.authToken != null)
+                    Text(
+                      'Tap to change photo',
+                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+                    ),
                   const SizedBox(height: 16),
                   Text(
                     _userName,

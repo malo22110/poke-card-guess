@@ -26,6 +26,7 @@ export interface GameLobby {
   hostId: string;
   players: string[]; // User IDs
   playerNames: Map<string, string>; // userId -> displayName
+  playerPictures: Map<string, string | null>; // userId -> picture URL (nullable)
   config: GameConfig;
   status: 'WAITING' | 'PLAYING' | 'FINISHED';
   currentRound: number;
@@ -121,6 +122,7 @@ export class GameService {
       roundResults: new Map(),
       scores: new Map([[hostId, 0]]), // Initialize host score
       playerNames: new Map([[hostId, hostName || 'Host']]), // Use provided name or default to Host
+      playerPictures: new Map([[hostId, null]]),
       roundStartTime: 0,
       history: new Map(),
     };
@@ -139,6 +141,7 @@ export class GameService {
     lobbyId: string,
     userId: string,
     userName: string,
+    userPicture?: string | null,
   ): Promise<GameLobby> {
     const lobby = this.lobbies.get(lobbyId);
     if (!lobby) {
@@ -152,6 +155,7 @@ export class GameService {
     if (!lobby.players.includes(userId)) {
       lobby.players.push(userId);
       lobby.playerNames.set(userId, userName);
+      lobby.playerPictures.set(userId, userPicture ?? null);
       lobby.scores.set(userId, 0); // Initialize score for new player
     }
 
@@ -172,6 +176,7 @@ export class GameService {
       players: lobby.players.map((id) => ({
         id,
         name: lobby.playerNames.get(id),
+        picture: lobby.playerPictures.get(id) ?? null,
       })),
       config: lobby.config,
     };
@@ -232,6 +237,7 @@ export class GameService {
       croppedImage: `data:image/png;base64,${card.croppedImage}`,
       playerStatuses: this.getRoundPlayerStatuses(lobby),
       playerNames: Object.fromEntries(lobby.playerNames),
+      playerPictures: Object.fromEntries(lobby.playerPictures),
       difficulty: lobby.config.difficulty,
       choices: card.choices,
     };
@@ -252,6 +258,7 @@ export class GameService {
         scores: finalScores,
         unlockedTrophies,
         playerNames: Object.fromEntries(lobby.playerNames),
+        playerPictures: Object.fromEntries(lobby.playerPictures),
         history: lobby.cards.map((card, index) => ({
           name: card.name,
           fullImageUrl: card.fullImageUrl,
@@ -266,6 +273,7 @@ export class GameService {
     return {
       gameId: lobby.id,
       playerNames: Object.fromEntries(lobby.playerNames),
+      playerPictures: Object.fromEntries(lobby.playerPictures),
       round: lobby.currentRound,
       totalRounds: lobby.config.rounds,
       croppedImage: `data:image/png;base64,${card.croppedImage}`,
