@@ -6,6 +6,8 @@ class GameSocketService {
   static final GameSocketService _instance = GameSocketService._internal();
   late IO.Socket socket;
   
+  String? _currentLobbyId;
+  
   // Stream controllers for events
   final _playerCountController = StreamController<int>.broadcast();
   final _playerListController = StreamController<List<String>>.broadcast();
@@ -105,7 +107,10 @@ class GameSocketService {
   }
 
   void joinGame(String lobbyId, String userId) {
-    socket.emit('joinGame', {'lobbyId': lobbyId, 'userId': userId});
+    if (_currentLobbyId != lobbyId) {
+      _currentLobbyId = lobbyId;
+      socket.emit('joinGame', {'lobbyId': lobbyId, 'userId': userId});
+    }
   }
 
   void startGame(String lobbyId, String userId) {
