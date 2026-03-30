@@ -609,7 +609,12 @@ class _GameScreenState extends State<GameScreen> {
          score++;
        }
 
-       if (result['roundScore'] != null) {
+       // Only show round score for the current player — not for other players' results
+       // broadcasted via roundFinished. result['userId'] is set on guessResult/giveUpResult
+       // but not on roundFinished broadcast (which carries the winner's data).
+       final resultUserId = result['userId'] as String?;
+       final isMyResult = resultUserId == null || resultUserId == _guestId;
+       if (result['roundScore'] != null && isMyResult) {
           _lastRoundPoints = result['roundScore'];
        }
        

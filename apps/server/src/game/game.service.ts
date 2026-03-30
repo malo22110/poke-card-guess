@@ -650,6 +650,7 @@ export class GameService {
       const allFinished = lobby.players.every((p) => lobby.roundResults.get(p));
 
       const result = {
+        userId, // Identifies which player this result belongs to
         correct: true,
         name: currentCard.name,
         fullImageUrl: currentCard.fullImageUrl,
