@@ -47,6 +47,7 @@ dependencies:
   provider: ^6.1.5+1
   js: ^0.6.7
   cached_network_image: ^3.4.1
+  package_info_plus: ^9.0.0
 
 dev_dependencies:
   flutter_test:

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class GameFooter extends StatelessWidget {
   const GameFooter({super.key});
@@ -18,7 +19,7 @@ class GameFooter extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'PokeCardGuess is an unofficial fan game and is not affiliated with Nintendo, Game Freak, or The Pokémon Company.\\nAll assets belong to their respective owners.',
+                  'PokeCardGuess is an unofficial fan game and is not affiliated with Nintendo, Game Freak, or The Pokémon Company.\nAll assets belong to their respective owners.',
                   textAlign: TextAlign.left,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
@@ -49,6 +50,21 @@ class GameFooter extends StatelessWidget {
                           decoration: TextDecoration.underline,
                         ),
                       ),
+                    ),
+                    const SizedBox(width: 12),
+                    FutureBuilder<PackageInfo>(
+                      future: PackageInfo.fromPlatform(),
+                      builder: (context, snapshot) {
+                        final version = snapshot.hasData ? '${snapshot.data!.version}+${snapshot.data!.buildNumber}' : '';
+                        if (version.isEmpty) return const SizedBox.shrink();
+                        return Text(
+                          'v$version',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontSize: 10,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
