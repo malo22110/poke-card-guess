@@ -17,6 +17,7 @@ import '../services/trophy_service.dart';
 import '../widgets/game/game_header.dart';
 import '../widgets/game/card_display.dart';
 import '../widgets/game/guess_input.dart';
+import '../widgets/game/multiple_choice_input.dart';
 import '../widgets/game/result_display.dart';
 import '../widgets/game/scoreboard.dart';
 import '../widgets/game/story_share_card.dart';
@@ -45,6 +46,8 @@ class _GameScreenState extends State<GameScreen> {
   String? _fullImageUrl;
   String? _revealedName;
   String? _revealedSet;
+  String? _difficulty;
+  List<String>? _choices;
 
   bool _isLoading = true;
   bool showFullCard = false;
@@ -767,6 +770,12 @@ class _GameScreenState extends State<GameScreen> {
       // Extract round info
       _currentRound = data['round'] ?? 0;
       _totalRounds = data['totalRounds'] ?? 0;
+      _difficulty = data['difficulty'];
+      if (data['choices'] != null) {
+        _choices = List<String>.from(data['choices']);
+      } else {
+        _choices = null;
+      }
     });
     
     // Start the countdown timer for the new round
@@ -1186,20 +1195,30 @@ class _GameScreenState extends State<GameScreen> {
                 ),
               )
             else if (!showFullCard)
-              GuessInput(
-                controller: _guessController,
-                onGuessSubmitted: checkGuess,
-                onGiveUp: giveUp,
-                errorText: _guessError,
-                isSubmitting: _isSubmitting,
-                onChanged: (value) {
-                  if (_guessError != null) {
-                    setState(() {
-                      _guessError = null;
-                    });
-                  }
-                },
-              )
+              (_difficulty == 'easy' && _choices != null && _choices!.isNotEmpty)
+                ? MultipleChoiceInput(
+                    choices: _choices!,
+                    onChoiceSelected: (choice) {
+                      _guessController.text = choice;
+                      checkGuess();
+                    },
+                    onGiveUp: giveUp,
+                    isSubmitting: _isSubmitting,
+                  )
+                : GuessInput(
+                    controller: _guessController,
+                    onGuessSubmitted: checkGuess,
+                    onGiveUp: giveUp,
+                    errorText: _guessError,
+                    isSubmitting: _isSubmitting,
+                    onChanged: (value) {
+                      if (_guessError != null) {
+                        setState(() {
+                          _guessError = null;
+                        });
+                      }
+                    },
+                  )
             else
               ResultDisplay(
                 isCorrect: _isCorrect,

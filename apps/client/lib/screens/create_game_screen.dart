@@ -22,6 +22,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
   // Custom Config State
   double _rounds = 10;
   bool _secretOnly = true;
+  String _difficulty = 'normal';
   List<String> _selectedSetIds = [];
   List<dynamic> _availableSets = [];
   List<String> _availableRarities = [];
@@ -520,6 +521,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
         body['rounds'] = _rounds.toInt();
         body['sets'] = _selectedSetIds;
         body['secretOnly'] = _secretOnly;
+        body['difficulty'] = _difficulty;
         if (_secretOnly && _selectedRarities.isNotEmpty) {
           body['rarities'] = _selectedRarities;
         }
@@ -865,6 +867,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
         'rounds': _rounds.toInt(),
         'sets': _selectedSetIds,
         'secretOnly': _secretOnly,
+        'difficulty': _difficulty,
         if (_secretOnly && _selectedRarities.isNotEmpty)
           'rarities': _selectedRarities,
       };
@@ -948,8 +951,47 @@ class _CreateGameScreenState extends State<CreateGameScreen> with SingleTickerPr
             activeColor: Colors.amber,
             onChanged: (value) => setState(() => _rounds = value),
           ),
-          const Divider(color: Colors.white24),
-
+          const Divider(color: Colors.white24, height: 32),
+          Row(
+            children: [
+              const Icon(Icons.settings_suggest, color: Colors.white70),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text('Difficulty', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  Text('Choose input mode', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                ],
+              ),
+              const Spacer(),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'normal', label: Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('Normal'))),
+                  ButtonSegment(value: 'easy', label: Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('Easy'))),
+                ],
+                selected: {_difficulty},
+                onSelectionChanged: (Set<String> newSelection) {
+                  setState(() {
+                    _difficulty = newSelection.first;
+                  });
+                },
+                style: ButtonStyle(
+                  backgroundColor: WidgetStateProperty.resolveWith<Color>((Set<WidgetState> states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return Colors.amber;
+                    }
+                    return Colors.transparent;
+                  }),
+                  foregroundColor: WidgetStateProperty.resolveWith<Color>((Set<WidgetState> states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return Colors.black;
+                    }
+                    return Colors.white70;
+                  }),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

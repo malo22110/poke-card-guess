@@ -11,6 +11,7 @@ export interface GameConfig {
   sets: string[]; // ['all'] or specific set IDs
   secretOnly: boolean;
   rarities?: string[]; // Optional custom rarities list
+  difficulty?: 'normal' | 'easy';
 }
 
 export interface CardSummary {
@@ -48,6 +49,7 @@ export interface GameCard {
   croppedImage: string;
   commonCardImage?: string;
   rarity?: string; // Card rarity (Common, Uncommon, Rare, etc.)
+  choices?: string[]; // Used in 'easy' mode for 4 buttons
 }
 
 export interface RoundResult {
@@ -84,6 +86,7 @@ export class GameService {
       sets: config.sets || ['sv03.5'],
       secretOnly: config.secretOnly === undefined ? true : config.secretOnly,
       rarities: config.rarities,
+      difficulty: config.difficulty || 'normal',
     };
 
     if (gameModeId) {
@@ -98,6 +101,7 @@ export class GameService {
             sets: modeConfig.sets,
             secretOnly: modeConfig.secretOnly,
             rarities: modeConfig.rarities,
+            difficulty: modeConfig.difficulty || 'normal',
           };
         }
       } catch (e) {
@@ -228,6 +232,8 @@ export class GameService {
       croppedImage: `data:image/png;base64,${card.croppedImage}`,
       playerStatuses: this.getRoundPlayerStatuses(lobby),
       playerNames: Object.fromEntries(lobby.playerNames),
+      difficulty: lobby.config.difficulty,
+      choices: card.choices,
     };
   }
 
@@ -266,6 +272,8 @@ export class GameService {
       scores: Object.fromEntries(lobby.scores),
       status: lobby.status,
       playerStatuses: this.getRoundPlayerStatuses(lobby),
+      difficulty: lobby.config.difficulty,
+      choices: card.choices,
     };
   }
 
@@ -885,6 +893,39 @@ export class GameService {
         );
         const croppedImage = await this.cropImage(imageBuffer);
 
+        let choices: string[] | undefined = undefined;
+        if (config.difficulty === 'easy') {
+          choices = [cardData.name];
+          try {
+            const setDetails = await this.tcgdex.fetch('sets', cardData.set.id);
+            if (setDetails && setDetails.cards && setDetails.cards.length > 3) {
+              const wrongNames = new Set<string>();
+              let fallbackAttempts = 0;
+              while (wrongNames.size < 3 && fallbackAttempts < 20) {
+                const randomWrongCard =
+                  setDetails.cards[
+                    Math.floor(Math.random() * setDetails.cards.length)
+                  ];
+                if (
+                  randomWrongCard.name !== cardData.name &&
+                  !wrongNames.has(randomWrongCard.name)
+                ) {
+                  wrongNames.add(randomWrongCard.name);
+                }
+                fallbackAttempts++;
+              }
+              choices.push(...Array.from(wrongNames));
+              // Shuffle array
+              for (let i = choices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [choices[i], choices[j]] = [choices[j], choices[i]];
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to generate choices for card', e);
+          }
+        }
+
         cards.push({
           id: cardData.id,
           name: cardData.name,
@@ -892,6 +933,7 @@ export class GameService {
           set: cardData.set.name,
           croppedImage,
           rarity: cardData.rarity || 'Unknown',
+          choices,
         });
       } catch (e) {
         console.warn('Failed to fetch/process a card', e);

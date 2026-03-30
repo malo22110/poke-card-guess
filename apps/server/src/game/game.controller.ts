@@ -32,6 +32,7 @@ export class GameController {
       sets?: string[];
       secretOnly?: boolean;
       rarities?: string[];
+      difficulty?: 'normal' | 'easy';
       guestName?: string;
       gameModeId?: string;
     },
@@ -52,6 +53,7 @@ export class GameController {
         sets: body.sets,
         secretOnly: body.secretOnly,
         rarities: body.rarities,
+        difficulty: body.difficulty,
       },
       req.user.name || body.guestName, // Prioritize auth name
       body.gameModeId,
