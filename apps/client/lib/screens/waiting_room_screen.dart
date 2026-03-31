@@ -222,7 +222,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   }
 
   void _copyJoinLink() {
-    final joinUrl = '${AppConfig.clientUrl}/#/join?lobbyId=$lobbyId';
+    final joinUrl = 'https://www.pokecardguess.com/#/join?lobbyId=$lobbyId';
     Clipboard.setData(ClipboardData(text: joinUrl));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -320,7 +320,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                                       style: TextStyle(color: Colors.white60, fontSize: 12),
                                     ),
                                     Text(
-                                      '${AppConfig.clientUrl}/#/join?lobbyId=$lobbyId',
+                                      'https://www.pokecardguess.com/#/join?lobbyId=$lobbyId',
                                       style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
                                       overflow: TextOverflow.ellipsis,
                                     ),
