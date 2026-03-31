@@ -3,7 +3,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pokecardguess/config/app_config.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/auth_service.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'dart:async';
@@ -384,6 +386,19 @@ class _GameScreenState extends State<GameScreen> {
       _isInitialized = true;
       _lobbyId = args['lobbyId'];
       _guestId = args['guestId'];
+      
+      // Resolve or OVERRIDE identity from AuthService
+      try {
+        final authService = Provider.of<AuthService>(context, listen: false);
+        if (authService.currentUser != null) {
+          _guestId = authService.currentUser!.id;
+          debugPrint('[GameScreen] Identified as auth user: $_guestId');
+        } else {
+          debugPrint('[GameScreen] Identified as guest user: $_guestId');
+        }
+      } catch (e) {
+             debugPrint('[GameScreen] Error resolving identity in GameScreen: $e');
+      }
       
       // Fetch current streak
       _fetchCurrentStreak();

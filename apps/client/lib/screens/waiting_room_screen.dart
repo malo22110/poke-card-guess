@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:pokecardguess/config/app_config.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
 import '../services/game_socket_service.dart';
 import '../widgets/common/custom_app_bar.dart';
 import '../widgets/common/app_drawer.dart';
@@ -57,8 +59,25 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
         isHost = args['isHost'] == true || args['isHost'] == 'true';
         authToken = args['authToken'];
         guestId = args['guestId']; 
-        _guestName = args['guestName']; // Read guestName
+        _guestName = args['guestName'];
 
+        // Resolve or OVERRIDE identity from AuthService
+        try {
+          final authService = Provider.of<AuthService>(context, listen: false);
+          if (authService.currentUser != null) {
+            // If authenticated, we MUST use our DB ID, even if arguments say otherwise
+            guestId = authService.currentUser!.id;
+            _guestName = authService.currentUser!.name;
+            _userName = authService.currentUser!.name; // Also pre-fill _userName
+            debugPrint('[WaitingRoom] Authenticated user join: ID=$guestId, Name=$_guestName');
+          } else {
+            debugPrint('[WaitingRoom] Guest user join: ID=$guestId, Name=$_guestName');
+          }
+        } catch (e) {
+          debugPrint('[WaitingRoom] Error resolving identity from AuthService: $e');
+        }
+
+        // Now initiate the join process
         if (authToken != null && _userName == null) {
           _fetchUserProfile().then((_) => _joinGameApi());
         } else {
@@ -141,11 +160,17 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        if (data['guestId'] != null) {
+          setState(() {
+            guestId = data['guestId'].toString();
+          });
+        }
         // Successfully joined, now initialize socket and fetch details
         _initSocket();
         _fetchLobbyDetails();
       } else {
-        setState(() => _error = 'Failed to join game: ${response.statusCode}');
+        setState(() => _error = 'Failed to join game: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       setState(() => _error = 'Error joining game: $e');
@@ -154,15 +179,6 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   
   void _initSocket() {
     _socketService.connect();
-    
-    // Join the game via WebSocket
-    final userId = authToken != null ? 'user-from-token-placeholder' : (guestId ?? 'guest');
-    // Note: If using token, we might need to decode it or backend handles it via handshake auth.
-    // For now, simpler: we pass the ID we know. Guest ID is crucial.
-    // Ideally authToken shouldn't be decoded here. 
-    // Let's assume guestId is populated or we rely on backend to identify from connection if strictly token based authentication was set up for WS.
-    // Current GateWay implementation expects { userId }.
-    
     _socketService.joinGame(lobbyId, guestId ?? 'unknown');
 
     _playerCountSub = _socketService.playerCountStream.listen((count) {
@@ -245,12 +261,15 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
     final uri = Uri(path: '/game', queryParameters: {
       'lobbyId': lobbyId,
       'isHost': isHost.toString(),
-      if (guestId != null) 'guestId': guestId.toString(),
+      if (guestId != null) 'guestId': guestId, // Removed to_string as guestId is already a String?
     });
 
     Navigator.of(context).pushReplacementNamed(
       uri.toString(), 
-      arguments: {'authToken': authToken}
+      arguments: {
+        'authToken': authToken,
+        'guestId': guestId, // Pass it explicitly in arguments too
+      }
     );
   }
 
