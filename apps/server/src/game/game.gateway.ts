@@ -20,6 +20,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private progressiveRevealIntervals: Map<string, NodeJS.Timeout> = new Map();
+  private clientData: Map<string, { lobbyId: string; userId: string }> =
+    new Map();
+  private emptyLobbyTimers: Map<string, NodeJS.Timeout> = new Map();
 
   constructor(private readonly gameService: GameService) {}
 
@@ -27,9 +30,25 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log(`Client connected: ${client.id}`);
   }
 
-  handleDisconnect(client: Socket) {
+  async handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
-    // Optional: Handle player disconnection (remove from lobby, etc.)
+    const data = this.clientData.get(client.id);
+    if (!data) return;
+
+    this.clientData.delete(client.id);
+    const { lobbyId } = data;
+
+    // Check if any sockets remain in this lobby
+    const sockets = await this.server.in(lobbyId).fetchSockets();
+    if (sockets.length === 0) {
+      console.log(`[Lobby] ${lobbyId} is empty. Scheduling deletion in 15s...`);
+      const timer = setTimeout(() => {
+        this.gameService.deleteLobby(lobbyId);
+        this.stopProgressiveReveal(lobbyId);
+        this.emptyLobbyTimers.delete(lobbyId);
+      }, 15_000);
+      this.emptyLobbyTimers.set(lobbyId, timer);
+    }
   }
 
   @SubscribeMessage('joinGame')
@@ -39,6 +58,17 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const { lobbyId, userId } = data;
     console.log(`User ${userId} joining lobby ${lobbyId} via WS`);
+
+    // Track this socket -> lobby mapping
+    this.clientData.set(client.id, { lobbyId, userId });
+
+    // If a deletion timer was pending for this lobby, cancel it
+    const pending = this.emptyLobbyTimers.get(lobbyId);
+    if (pending) {
+      clearTimeout(pending);
+      this.emptyLobbyTimers.delete(lobbyId);
+      console.log(`[Lobby] ${lobbyId} deletion aborted — player reconnected.`);
+    }
 
     // Join the socket.io room
     client.join(lobbyId);

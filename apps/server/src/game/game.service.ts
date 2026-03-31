@@ -813,6 +813,16 @@ export class GameService {
     }
   }
 
+  deleteLobby(lobbyId: string) {
+    this.clearRoundTimer(lobbyId);
+    const deleted = this.lobbies.delete(lobbyId);
+    if (deleted) {
+      console.log(
+        `[Lobby] Lobby ${lobbyId} has been deleted due to inactivity.`,
+      );
+    }
+  }
+
   // --- Helpers ---
 
   private async fetchGameCards(
