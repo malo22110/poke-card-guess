@@ -15,6 +15,9 @@ COPY . .
 RUN npx prisma generate
 RUN npm run build
 
+# Create uploads directory as a mount point for the persistent volume
+RUN mkdir -p /app/uploads/avatars
+
 EXPOSE 3000
 
 CMD ["/bin/sh", "-c", "npx prisma migrate deploy && node dist/src/main"]
